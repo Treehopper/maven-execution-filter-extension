@@ -22,3 +22,5 @@ In your `${baseDir}/.mvn/extensions.xml`:
 [![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/Treehopper/maven-execution-filter-extension)
 
 ![Jitpack](https://jitpack.io/v/Treehopper/maven-execution-filter-extension.svg "Jitpack Status")
+
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
