@@ -1,0 +1,9 @@
+tasks:
+  - init: mvn verify
+
+
+
+vscode:
+  extensions:
+    - redhat.java
+    - alphabotsec.vscode-eclipse-keybindings
