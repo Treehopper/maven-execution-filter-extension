@@ -7,3 +7,4 @@ vscode:
   extensions:
     - redhat.java
     - alphabotsec.vscode-eclipse-keybindings
+    - matt-rudge.auto-open-preview-panel
