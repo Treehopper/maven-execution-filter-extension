@@ -15,7 +15,7 @@ In your `${baseDir}/.mvn/extensions.xml`:
     <extension>
         <groupId>com.github.Treehopper</groupId>
         <artifactId>maven-execution-filter-extension</artifactId>
-        <version>1.1.0-alpha</version>
+        <version>1.2.0-alpha</version>
     </extension>
 </extensions>
 ```
