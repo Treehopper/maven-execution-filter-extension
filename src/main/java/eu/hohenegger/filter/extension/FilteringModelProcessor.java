@@ -50,13 +50,11 @@ public class FilteringModelProcessor extends DefaultModelProcessor {
   public FilteringModelProcessor() {
     comparePartially = comparing(Plugin::getGroupId).thenComparing(Plugin::getArtifactId);
 
-
-
     filteredPlugins = loadPluginsToBeFiltered();
   }
 
   private List<Plugin> loadPluginsToBeFiltered() {
-    //TODO: load these from file
+    // TODO: load these from file
     Plugin cs = new Plugin();
     cs.setArtifactId("maven-checkstyle-plugin");
     cs.setGroupId("org.apache.maven.plugins");
@@ -113,7 +111,7 @@ public class FilteringModelProcessor extends DefaultModelProcessor {
             .isPresent();
 
     if (toBeFiltered) {
-      logger.debug(plugin + " filtered");
+      logger.info(plugin + " filtered");
     }
 
     return toBeFiltered;
