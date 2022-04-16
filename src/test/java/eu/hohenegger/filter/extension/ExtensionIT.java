@@ -23,8 +23,10 @@ import static com.soebes.itf.extension.assertj.MavenITAssertions.assertThat;
 import static com.soebes.itf.jupiter.extension.MavenCLIOptions.NO_TRANSFER_PROGRESS;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import com.soebes.itf.jupiter.extension.MavenCLIOptions;
 import com.soebes.itf.jupiter.extension.MavenJupiterExtension;
 import com.soebes.itf.jupiter.extension.MavenOption;
+import com.soebes.itf.jupiter.extension.MavenRepository;
 import com.soebes.itf.jupiter.extension.MavenTest;
 import com.soebes.itf.jupiter.maven.MavenExecutionResult;
 import com.soebes.itf.jupiter.maven.MavenExecutionResult.ExecutionResult;
@@ -35,11 +37,11 @@ public class ExtensionIT {
 
   @MavenTest
   @MavenOption(NO_TRANSFER_PROGRESS)
-  // @MavenOption(DEBUG)
+  @MavenOption(MavenCLIOptions.DEBUG)
   @DisplayName("Running a basic test which makes sure the groupId/artifact of the plugin are ok.")
   void the_first_test_case(MavenExecutionResult result) {
-    assertEquals(result.getResult(), ExecutionResult.Successful);
+    assertThat(result).out().debug().anyMatch(line -> line.matches(".*filtered.*"));
+    assertEquals(ExecutionResult.Successful, result.getResult());
     // assertThat(result).build().isSuccessful();
-    assertThat(result).out().debug().anyMatch(line -> line.matches(".*filtered"));
   }
 }
