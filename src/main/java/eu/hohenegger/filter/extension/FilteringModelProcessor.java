@@ -22,7 +22,6 @@ package eu.hohenegger.filter.extension;
 import static java.util.Comparator.comparing;
 import static java.util.function.Predicate.not;
 import static java.util.stream.Collectors.toList;
-import static org.slf4j.LoggerFactory.getLogger;
 
 import java.io.File;
 import java.io.IOException;
@@ -37,17 +36,23 @@ import org.apache.maven.model.Plugin;
 import org.apache.maven.model.building.DefaultModelProcessor;
 import org.apache.maven.model.building.ModelProcessor;
 import org.codehaus.plexus.component.annotations.Component;
-import org.slf4j.Logger;
+import org.codehaus.plexus.component.annotations.Requirement;
+import org.codehaus.plexus.logging.Logger;
+import org.codehaus.plexus.logging.console.ConsoleLogger;
+import org.slf4j.LoggerFactory;
 
-@Component(role = ModelProcessor.class)
+@Component(role = ModelProcessor.class, hint = "filtering-model-reader")
 public class FilteringModelProcessor extends DefaultModelProcessor {
 
-  private final Logger logger = getLogger(FilteringModelProcessor.class);
+  @Requirement private Logger logger = new ConsoleLogger();
+  private final org.slf4j.Logger slf4jlogger =
+      LoggerFactory.getLogger(FilteringModelProcessor.class);
 
   private List<Plugin> filteredPlugins;
   private Comparator<Plugin> comparePartially;
 
   public FilteringModelProcessor() {
+    slf4jlogger.info("Init FilteringModelProcessor");
     comparePartially = comparing(Plugin::getGroupId).thenComparing(Plugin::getArtifactId);
 
     filteredPlugins = loadPluginsToBeFiltered();
