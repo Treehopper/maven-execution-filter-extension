@@ -44,15 +44,13 @@ import org.slf4j.LoggerFactory;
 @Component(role = ModelProcessor.class, hint = "filtering-model-reader")
 public class FilteringModelProcessor extends DefaultModelProcessor {
 
-  @Requirement private Logger logger = new ConsoleLogger();
-  private final org.slf4j.Logger slf4jlogger =
-      LoggerFactory.getLogger(FilteringModelProcessor.class);
+  @Requirement
+  private Logger logger = new ConsoleLogger();
 
   private List<Plugin> filteredPlugins;
   private Comparator<Plugin> comparePartially;
 
   public FilteringModelProcessor() {
-    slf4jlogger.info("Init FilteringModelProcessor");
     comparePartially = comparing(Plugin::getGroupId).thenComparing(Plugin::getArtifactId);
 
     filteredPlugins = loadPluginsToBeFiltered();
@@ -116,7 +114,7 @@ public class FilteringModelProcessor extends DefaultModelProcessor {
             .isPresent();
 
     if (toBeFiltered) {
-      logger.info(plugin + " filtered");
+      logger.debug(plugin + " filtered");
     }
 
     return toBeFiltered;
