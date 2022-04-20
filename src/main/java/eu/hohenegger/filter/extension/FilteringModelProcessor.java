@@ -27,33 +27,66 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+
+import javax.inject.Inject;
+
 import org.apache.maven.model.Build;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.Plugin;
 import org.apache.maven.model.building.DefaultModelProcessor;
 import org.apache.maven.model.building.ModelProcessor;
+import org.apache.maven.plugin.descriptor.PluginDescriptor;
+import org.apache.maven.plugin.descriptor.PluginDescriptorBuilder;
 import org.codehaus.plexus.component.annotations.Component;
 import org.codehaus.plexus.component.annotations.Requirement;
 import org.codehaus.plexus.logging.Logger;
 import org.codehaus.plexus.logging.console.ConsoleLogger;
-import org.slf4j.LoggerFactory;
 
 @Component(role = ModelProcessor.class, hint = "filtering-model-reader")
 public class FilteringModelProcessor extends DefaultModelProcessor {
 
+
   @Requirement
   private Logger logger = new ConsoleLogger();
 
-  private List<Plugin> filteredPlugins;
+  // @Inject
+  // private PropertiesProvider propertiesProvider;
+
+  private List<Plugin> filteredPlugins = Collections.emptyList();
   private Comparator<Plugin> comparePartially;
 
-  public FilteringModelProcessor() {
+  @Inject
+  public FilteringModelProcessor(PropertiesProvider propertiesProvider) {
     comparePartially = comparing(Plugin::getGroupId).thenComparing(Plugin::getArtifactId);
 
-    filteredPlugins = loadPluginsToBeFiltered();
+    // filteredPlugins = loadPluginsToBeFiltered();
+    
+    if(propertiesProvider.isConfigured()) {
+      List<String> pluginDescriptors = propertiesProvider.getPluginDescriptors();
+      if(pluginDescriptors.isEmpty()) {
+      //  throw new RuntimeException("pluginDescriptors must be of format: artifactId1:groupId1,artifactId2:groupId2");
+        return;
+      }
+      filteredPlugins = pluginDescriptors.stream().map(plugin -> {
+        return loadPluginToBeFiltered(plugin);
+      }).collect(Collectors.toList());
+    }
+  }
+
+  private Plugin loadPluginToBeFiltered(String pluginDescriptor) {
+    List<String> segments = List.of(pluginDescriptor.split(":"));
+    if(segments.size() < 2) {
+      throw new RuntimeException("pluginDescriptor must be of format: artifactId:groupId");
+    }
+    Plugin cs = new Plugin();
+    cs.setArtifactId(segments.get(0)); // "maven-checkstyle-plugin"
+    cs.setGroupId(segments.get(1)); // "org.apache.maven.plugins"
+    return cs;
   }
 
   private List<Plugin> loadPluginsToBeFiltered() {
