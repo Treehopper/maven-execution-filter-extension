@@ -22,14 +22,11 @@ package eu.hohenegger.filter.extension;
 import static com.soebes.itf.extension.assertj.MavenITAssertions.assertThat;
 import static com.soebes.itf.jupiter.extension.MavenCLIOptions.DEBUG;
 import static com.soebes.itf.jupiter.extension.MavenCLIOptions.NO_TRANSFER_PROGRESS;
-import static eu.hohenegger.filter.extension.FilteringModelProcessor.FILTER_PLUGINS_SYS_PROP;
 
 import com.soebes.itf.jupiter.extension.MavenJupiterExtension;
 import com.soebes.itf.jupiter.extension.MavenOption;
 import com.soebes.itf.jupiter.extension.MavenTest;
-import com.soebes.itf.jupiter.extension.SystemProperty;
 import com.soebes.itf.jupiter.maven.MavenExecutionResult;
-
 import org.junit.jupiter.api.DisplayName;
 
 @MavenJupiterExtension
@@ -38,7 +35,11 @@ public class ExtensionIT {
   @MavenTest
   @MavenOption(NO_TRANSFER_PROGRESS)
   @MavenOption(DEBUG)
-  @SystemProperty(value = PropertiesProvider.FILTER_PLUGINS_SYS_PROP, content="maven-checkstyle-plugin:org.apache.maven.plugins")
+  // @SystemProperty(
+  //     value = PropertiesProvider.FILTER_PLUGINS_SYS_PROP,
+  //     content =
+  //
+  // "maven-checkstyle-plugin:org.apache.maven.plugins,maven-pmd-plugin:org.apache.maven.plugins,spotbugs-maven-plugin:com.github.spotbugs,license-maven-plugin:org.codehaus.mojo")
   @DisplayName("Filter corrupt Checkstyle config which would fail the build, if not filtered.")
   void the_first_test_case(MavenExecutionResult result) {
     assertThat(result).isSuccessful();

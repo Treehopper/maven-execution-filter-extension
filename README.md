@@ -29,6 +29,11 @@ In your `${baseDir}/.mvn/extensions.xml` (requires Maven 3.3.1):
 </pluginRepositories>
 ```
 
+In your `${baseDir}/.mvn/jvm.config`:
+```
+-DfilterPlugins=maven-checkstyle-plugin:org.apache.maven.plugins,maven-pmd-plugin:org.apache.maven.plugins,spotbugs-maven-plugin:com.github.spotbugs,license-maven-plugin:org.codehaus.mojo
+```
+
 # Development
 [![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/Treehopper/maven-execution-filter-extension)
 

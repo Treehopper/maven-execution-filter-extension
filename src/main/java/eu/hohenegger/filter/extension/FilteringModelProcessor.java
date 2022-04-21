@@ -32,16 +32,12 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
 import javax.inject.Inject;
-
 import org.apache.maven.model.Build;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.Plugin;
 import org.apache.maven.model.building.DefaultModelProcessor;
 import org.apache.maven.model.building.ModelProcessor;
-import org.apache.maven.plugin.descriptor.PluginDescriptor;
-import org.apache.maven.plugin.descriptor.PluginDescriptorBuilder;
 import org.codehaus.plexus.component.annotations.Component;
 import org.codehaus.plexus.component.annotations.Requirement;
 import org.codehaus.plexus.logging.Logger;
@@ -50,12 +46,7 @@ import org.codehaus.plexus.logging.console.ConsoleLogger;
 @Component(role = ModelProcessor.class, hint = "filtering-model-reader")
 public class FilteringModelProcessor extends DefaultModelProcessor {
 
-
-  @Requirement
-  private Logger logger = new ConsoleLogger();
-
-  // @Inject
-  // private PropertiesProvider propertiesProvider;
+  @Requirement private Logger logger = new ConsoleLogger();
 
   private List<Plugin> filteredPlugins = Collections.emptyList();
   private Comparator<Plugin> comparePartially;
@@ -64,50 +55,30 @@ public class FilteringModelProcessor extends DefaultModelProcessor {
   public FilteringModelProcessor(PropertiesProvider propertiesProvider) {
     comparePartially = comparing(Plugin::getGroupId).thenComparing(Plugin::getArtifactId);
 
-    // filteredPlugins = loadPluginsToBeFiltered();
-    
-    if(propertiesProvider.isConfigured()) {
+    if (propertiesProvider.isConfigured()) {
       List<String> pluginDescriptors = propertiesProvider.getPluginDescriptors();
-      if(pluginDescriptors.isEmpty()) {
-      //  throw new RuntimeException("pluginDescriptors must be of format: artifactId1:groupId1,artifactId2:groupId2");
+      if (pluginDescriptors.isEmpty()) {
         return;
       }
-      filteredPlugins = pluginDescriptors.stream().map(plugin -> {
-        return loadPluginToBeFiltered(plugin);
-      }).collect(Collectors.toList());
+      filteredPlugins =
+          pluginDescriptors.stream()
+              .map(
+                  plugin -> {
+                    return loadPluginToBeFiltered(plugin);
+                  })
+              .collect(Collectors.toList());
     }
   }
 
   private Plugin loadPluginToBeFiltered(String pluginDescriptor) {
     List<String> segments = List.of(pluginDescriptor.split(":"));
-    if(segments.size() < 2) {
+    if (segments.size() < 2) {
       throw new RuntimeException("pluginDescriptor must be of format: artifactId:groupId");
     }
     Plugin cs = new Plugin();
-    cs.setArtifactId(segments.get(0)); // "maven-checkstyle-plugin"
-    cs.setGroupId(segments.get(1)); // "org.apache.maven.plugins"
+    cs.setArtifactId(segments.get(0));
+    cs.setGroupId(segments.get(1));
     return cs;
-  }
-
-  private List<Plugin> loadPluginsToBeFiltered() {
-    // TODO: load these from file
-    Plugin cs = new Plugin();
-    cs.setArtifactId("maven-checkstyle-plugin");
-    cs.setGroupId("org.apache.maven.plugins");
-
-    Plugin pmd = new Plugin();
-    pmd.setArtifactId("maven-pmd-plugin");
-    pmd.setGroupId("org.apache.maven.plugins");
-
-    Plugin sb = new Plugin();
-    sb.setArtifactId("spotbugs-maven-plugin");
-    sb.setGroupId("com.github.spotbugs");
-
-    Plugin lp = new Plugin();
-    lp.setArtifactId("license-maven-plugin");
-    lp.setGroupId("org.codehaus.mojo");
-
-    return List.of(cs, pmd, sb, lp);
   }
 
   @Override
