@@ -2,12 +2,6 @@
             xsi:schemaLocation="https://maven.apache.org/EXTENSIONS/1.0.0 https://maven.apache.org/xsd/core-extensions-1.0.0.xsd">
 
     <extension>
-        <groupId>me.qoomon</groupId>
-        <artifactId>maven-git-versioning-extension</artifactId>
-        <version>7.3.0</version>
-    </extension>
-
-    <extension>
         <groupId>com.github.Treehopper</groupId>
         <artifactId>maven-execution-filter-extension</artifactId>
         <version>@project.version@</version>

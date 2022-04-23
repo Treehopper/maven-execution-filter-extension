@@ -31,7 +31,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import javax.inject.Inject;
 import org.apache.maven.model.Build;
 import org.apache.maven.model.Model;
@@ -53,7 +52,11 @@ public class FilteringModelProcessor extends DefaultModelProcessor {
 
   @Inject
   public FilteringModelProcessor(PropertiesProvider propertiesProvider) {
-    comparePartially = comparing(Plugin::getGroupId).thenComparing(Plugin::getArtifactId);
+    comparePartially =
+        comparing(Plugin::getArtifactId)
+            .thenComparing(Plugin::getGroupId, Comparator.nullsFirst(null));
+    // .thenComparing(Plugin::getVersion, Comparator.nullsFirst(null));
+    // TODO: support versions
 
     if (propertiesProvider.isConfigured()) {
       List<String> pluginDescriptors = propertiesProvider.getPluginDescriptors();
@@ -61,24 +64,25 @@ public class FilteringModelProcessor extends DefaultModelProcessor {
         return;
       }
       filteredPlugins =
-          pluginDescriptors.stream()
-              .map(
-                  plugin -> {
-                    return loadPluginToBeFiltered(plugin);
-                  })
-              .collect(Collectors.toList());
+          pluginDescriptors.stream().map(this::loadPluginToBeFiltered).collect(toList());
     }
   }
 
   private Plugin loadPluginToBeFiltered(String pluginDescriptor) {
     List<String> segments = List.of(pluginDescriptor.split(":"));
-    if (segments.size() < 2) {
-      throw new RuntimeException("pluginDescriptor must be of format: artifactId:groupId");
+    if (segments.size() < 1) {
+      throw new RuntimeException(
+          "pluginDescriptor must be of format: artifactId[:groupId[:version]]");
     }
-    Plugin cs = new Plugin();
-    cs.setArtifactId(segments.get(0));
-    cs.setGroupId(segments.get(1));
-    return cs;
+    Plugin plugin = new Plugin();
+    plugin.setArtifactId(segments.get(0));
+    if (segments.size() > 1) {
+      plugin.setGroupId(segments.get(1));
+    }
+    if (segments.size() > 2) {
+      plugin.setVersion(segments.get(2));
+    }
+    return plugin;
   }
 
   @Override
