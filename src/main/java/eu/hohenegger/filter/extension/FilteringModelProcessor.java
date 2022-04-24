@@ -22,58 +22,66 @@ package eu.hohenegger.filter.extension;
 import static java.util.Comparator.comparing;
 import static java.util.function.Predicate.not;
 import static java.util.stream.Collectors.toList;
-import static org.slf4j.LoggerFactory.getLogger;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import javax.inject.Inject;
 import org.apache.maven.model.Build;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.Plugin;
 import org.apache.maven.model.building.DefaultModelProcessor;
 import org.apache.maven.model.building.ModelProcessor;
 import org.codehaus.plexus.component.annotations.Component;
-import org.slf4j.Logger;
+import org.codehaus.plexus.component.annotations.Requirement;
+import org.codehaus.plexus.logging.Logger;
+import org.codehaus.plexus.logging.console.ConsoleLogger;
 
-@Component(role = ModelProcessor.class)
+@Component(role = ModelProcessor.class, hint = "filtering-model-reader")
 public class FilteringModelProcessor extends DefaultModelProcessor {
 
-  private final Logger logger = getLogger(FilteringModelProcessor.class);
+  @Requirement private Logger logger = new ConsoleLogger();
 
-  private List<Plugin> filteredPlugins;
+  private List<Plugin> filteredPlugins = Collections.emptyList();
   private Comparator<Plugin> comparePartially;
 
-  public FilteringModelProcessor() {
-    comparePartially = comparing(Plugin::getGroupId).thenComparing(Plugin::getArtifactId);
+  @Inject
+  public FilteringModelProcessor(PropertiesProvider propertiesProvider) {
+    comparePartially =
+        comparing(Plugin::getArtifactId)
+            .thenComparing(Plugin::getGroupId, Comparator.nullsFirst(null));
 
-
-
-    filteredPlugins = loadPluginsToBeFiltered();
+    if (propertiesProvider.isConfigured()) {
+      List<String> pluginDescriptors = propertiesProvider.getPluginDescriptors();
+      if (pluginDescriptors.isEmpty()) {
+        return;
+      }
+      filteredPlugins =
+          pluginDescriptors.stream().map(this::loadPluginToBeFiltered).collect(toList());
+    }
   }
 
-  private List<Plugin> loadPluginsToBeFiltered() {
-    //TODO: load these from file
-    Plugin cs = new Plugin();
-    cs.setArtifactId("maven-checkstyle-plugin");
-    cs.setGroupId("org.apache.maven.plugins");
-
-    Plugin pmd = new Plugin();
-    pmd.setArtifactId("maven-pmd-plugin");
-    pmd.setGroupId("org.apache.maven.plugins");
-
-    Plugin sb = new Plugin();
-    sb.setArtifactId("spotbugs-maven-plugin");
-    sb.setGroupId("com.github.spotbugs");
-
-    Plugin lp = new Plugin();
-    lp.setArtifactId("license-maven-plugin");
-    lp.setGroupId("org.codehaus.mojo");
-
-    return List.of(cs, pmd, sb, lp);
+  private Plugin loadPluginToBeFiltered(String pluginDescriptor) {
+    List<String> segments = List.of(pluginDescriptor.split(":"));
+    if (segments.size() < 1) {
+      throw new RuntimeException(
+          "pluginDescriptor must be of format: artifactId[:groupId[:version]]");
+    }
+    Plugin plugin = new Plugin();
+    plugin.setArtifactId(segments.get(0));
+    if (segments.size() > 1) {
+      plugin.setGroupId(segments.get(1));
+    }
+    if (segments.size() > 2) {
+      plugin.setVersion(segments.get(2));
+    }
+    return plugin;
   }
 
   @Override
@@ -105,17 +113,18 @@ public class FilteringModelProcessor extends DefaultModelProcessor {
   }
 
   boolean isFilteredPlugin(Plugin plugin) {
-    boolean toBeFiltered;
-    toBeFiltered =
+    Optional<Plugin> ofilteredPlugin =
         filteredPlugins.stream()
             .filter(filteredPlugin -> comparePartially.compare(plugin, filteredPlugin) == 0)
-            .findFirst()
-            .isPresent();
+            .findFirst();
 
-    if (toBeFiltered) {
-      logger.debug(plugin + " filtered");
+    if (ofilteredPlugin.isPresent()) {
+      logger.info(
+          String.format(
+              "Plugin [%s:%s:%s] filtered",
+              plugin.getGroupId(), plugin.getArtifactId(), plugin.getVersion()));
     }
 
-    return toBeFiltered;
+    return ofilteredPlugin.isPresent();
   }
 }

@@ -35,7 +35,19 @@ public class FilteringModelProcessorTest {
 
   @BeforeEach
   public void setUp() {
-    modelProcessor = new FilteringModelProcessor();
+    modelProcessor =
+        new FilteringModelProcessor(
+            new PropertiesProvider() {
+              @Override
+              public boolean isConfigured() {
+                return true;
+              }
+
+              @Override
+              public List<String> getPluginDescriptors() {
+                return List.of("maven-checkstyle-plugin:org.apache.maven.plugins");
+              }
+            });
   }
 
   @Test

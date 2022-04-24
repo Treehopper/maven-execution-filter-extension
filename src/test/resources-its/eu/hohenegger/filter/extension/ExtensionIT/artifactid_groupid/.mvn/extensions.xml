@@ -4,6 +4,6 @@
     <extension>
         <groupId>com.github.Treehopper</groupId>
         <artifactId>maven-execution-filter-extension</artifactId>
-        <version>1.2.0-alpha</version>
+        <version>@project.version@</version>
     </extension>
 </extensions>

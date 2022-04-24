@@ -7,7 +7,7 @@ Skip-options have to be found, and applied correctly in your IDE, CLI, etc.
 If they are applied correctly, the plugins will still be downloaded, started, and pollute logs.
 
 # Example Usage
-In your `${baseDir}/.mvn/extensions.xml`:
+In your `${baseDir}/.mvn/extensions.xml` (requires Maven 3.3.1):
 ```xml
 <extensions xmlns="https://maven.apache.org/EXTENSIONS/1.0.0" xmlns:xsi="https://www.w3.org/2001/XMLSchema-instance"
             xsi:schemaLocation="https://maven.apache.org/EXTENSIONS/1.0.0 https://maven.apache.org/xsd/core-extensions-1.0.0.xsd">
@@ -27,6 +27,11 @@ In your `${baseDir}/.mvn/extensions.xml`:
         <url>https://jitpack.io</url>
     </pluginRepository>
 </pluginRepositories>
+```
+
+In your `${baseDir}/.mvn/jvm.config`:
+```
+-DfilterPlugins=maven-checkstyle-plugin:org.apache.maven.plugins,maven-pmd-plugin:org.apache.maven.plugins,spotbugs-maven-plugin:com.github.spotbugs,license-maven-plugin:org.codehaus.mojo
 ```
 
 # Development

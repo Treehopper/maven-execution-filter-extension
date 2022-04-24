@@ -20,8 +20,8 @@ jobs:
           command: mvn --batch-mode -DskipTests -Dlicense.skipDownloadLicenses=true clean package
       # Then run your tests!
       - run:
-          name: Test
-          command: mvn --batch-mode test
+          name: Verify
+          command: mvn --batch-mode verify
 
 workflows:
   # Below is the definition of your workflow.
