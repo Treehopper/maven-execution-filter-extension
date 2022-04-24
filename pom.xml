@@ -149,6 +149,32 @@
           </execution>
         </executions>
       </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>license-maven-plugin</artifactId>
+        <version>2.0.0</version>
+        <configuration>
+          <addJavaLicenseAfterPackage>false</addJavaLicenseAfterPackage>
+          <addJavaLicenseAfterPackage>false</addJavaLicenseAfterPackage>
+          <licenseName>apache_v2</licenseName>
+          <organizationName>hohenegger.eu</organizationName>
+          <copyrightOwners>Max Hohenegger &lt;maven-execution-filter-extension@hohenegger.eu&gt;</copyrightOwners>
+          <inceptionYear>2022</inceptionYear>
+        </configuration>
+        <executions>
+          <execution>
+            <id>download</id>
+            <goals>
+              <goal>download-licenses</goal>
+            </goals>
+            <phase>prepare-package</phase>
+            <configuration>
+              <licensesOutputDirectory>${project.build.directory}/classes/licenses</licensesOutputDirectory>
+              <licensesOutputFile>${project.build.directory}/classes/licenses.xml</licensesOutputFile>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
 
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
@@ -185,6 +211,18 @@
           <!-- No Mojo in this Extension -->
           <skipErrorNoDescriptorsFound>true</skipErrorNoDescriptorsFound>
         </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
+        <version>3.2.1</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>jar-no-fork</goal>
+            </goals>
+          </execution>
+        </executions>
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
