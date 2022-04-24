@@ -20,8 +20,8 @@
 package eu.hohenegger.filter.extension;
 
 import static com.soebes.itf.extension.assertj.MavenITAssertions.assertThat;
-import static com.soebes.itf.jupiter.extension.MavenCLIOptions.DEBUG;
-import static com.soebes.itf.jupiter.extension.MavenCLIOptions.NO_TRANSFER_PROGRESS;
+import static com.soebes.itf.jupiter.extension.MavenCLIOptions.*;
+import static eu.hohenegger.filter.extension.PropertiesProvider.FILTER_PLUGINS_SYS_PROP;
 
 import com.soebes.itf.jupiter.extension.MavenJupiterExtension;
 import com.soebes.itf.jupiter.extension.MavenOption;
@@ -34,61 +34,47 @@ public class ExtensionIT {
 
   @MavenTest
   @MavenOption(NO_TRANSFER_PROGRESS)
-  @MavenOption(DEBUG)
+  @MavenOption(ERRORS)
   void no_config(MavenExecutionResult result) {
     assertThat(result).isFailure();
+    assertThat(result)
+        .out()
+        .info()
+        .contains("--- maven-checkstyle-plugin:3.1.2:check (default) @ bar ---");
   }
 
   @MavenTest
   @MavenOption(NO_TRANSFER_PROGRESS)
-  @MavenOption(DEBUG)
-  @SystemProperty(
-      value = PropertiesProvider.FILTER_PLUGINS_SYS_PROP,
-      content = "maven-checkstyle-plugin")
+  @SystemProperty(value = FILTER_PLUGINS_SYS_PROP, content = "maven-checkstyle-plugin")
   void artifactid_only(MavenExecutionResult result) {
     assertThat(result).isSuccessful();
     assertThat(result)
         .out()
-        .debug()
-        .contains("Plugin [org.apache.maven.plugins:maven-checkstyle-plugin] filtered");
+        .info()
+        .contains("Plugin [org.apache.maven.plugins:maven-checkstyle-plugin:3.1.2] filtered");
   }
 
   @MavenTest
   @MavenOption(NO_TRANSFER_PROGRESS)
-  @MavenOption(DEBUG)
   @SystemProperty(
-      value = PropertiesProvider.FILTER_PLUGINS_SYS_PROP,
+      value = FILTER_PLUGINS_SYS_PROP,
       content = "maven-checkstyle-plugin:org.apache.maven.plugins")
   void artifactid_groupid(MavenExecutionResult result) {
     assertThat(result).isSuccessful();
     assertThat(result)
         .out()
-        .debug()
-        .contains("Plugin [org.apache.maven.plugins:maven-checkstyle-plugin] filtered");
+        .info()
+        .contains("Plugin [org.apache.maven.plugins:maven-checkstyle-plugin:3.1.2] filtered");
   }
 
   @MavenTest
   @MavenOption(NO_TRANSFER_PROGRESS)
-  @MavenOption(DEBUG)
-  @SystemProperty(
-      value = PropertiesProvider.FILTER_PLUGINS_SYS_PROP,
-      content = "maven-checkstyle-plugin:org.apache.maven.plugins:3.1.2")
-  void artifactid_groupid_version(MavenExecutionResult result) {
-    assertThat(result).isSuccessful();
-    assertThat(result)
-        .out()
-        .debug()
-        .contains("Plugin [org.apache.maven.plugins:maven-checkstyle-plugin] filtered");
-  }
-
-  @MavenTest
-  @MavenOption(NO_TRANSFER_PROGRESS)
-  @MavenOption(DEBUG)
   void jvm_config(MavenExecutionResult result) {
     assertThat(result).isSuccessful();
     assertThat(result)
         .out()
-        .debug()
-        .contains("Plugin [org.apache.maven.plugins:maven-checkstyle-plugin] filtered");
+        .info()
+        .contains("Plugin [org.apache.maven.plugins:maven-checkstyle-plugin:3.1.2] filtered")
+        .contains("Plugin [org.apache.maven.plugins:maven-pmd-plugin:2.4] filtered");
   }
 }

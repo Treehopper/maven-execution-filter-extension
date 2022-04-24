@@ -31,6 +31,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import javax.inject.Inject;
 import org.apache.maven.model.Build;
 import org.apache.maven.model.Model;
@@ -55,8 +56,6 @@ public class FilteringModelProcessor extends DefaultModelProcessor {
     comparePartially =
         comparing(Plugin::getArtifactId)
             .thenComparing(Plugin::getGroupId, Comparator.nullsFirst(null));
-    // .thenComparing(Plugin::getVersion, Comparator.nullsFirst(null));
-    // TODO: support versions
 
     if (propertiesProvider.isConfigured()) {
       List<String> pluginDescriptors = propertiesProvider.getPluginDescriptors();
@@ -114,17 +113,18 @@ public class FilteringModelProcessor extends DefaultModelProcessor {
   }
 
   boolean isFilteredPlugin(Plugin plugin) {
-    boolean toBeFiltered;
-    toBeFiltered =
+    Optional<Plugin> ofilteredPlugin =
         filteredPlugins.stream()
             .filter(filteredPlugin -> comparePartially.compare(plugin, filteredPlugin) == 0)
-            .findFirst()
-            .isPresent();
+            .findFirst();
 
-    if (toBeFiltered) {
-      logger.debug(plugin + " filtered");
+    if (ofilteredPlugin.isPresent()) {
+      logger.info(
+          String.format(
+              "Plugin [%s:%s:%s] filtered",
+              plugin.getGroupId(), plugin.getArtifactId(), plugin.getVersion()));
     }
 
-    return toBeFiltered;
+    return ofilteredPlugin.isPresent();
   }
 }
