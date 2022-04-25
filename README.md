@@ -15,7 +15,7 @@ In your `${baseDir}/.mvn/extensions.xml` (requires Maven 3.3.1):
     <extension>
         <groupId>com.github.Treehopper</groupId>
         <artifactId>maven-execution-filter-extension</artifactId>
-        <version>1.2.0-alpha</version>
+        <version>1.4.0-alpha</version>
     </extension>
 </extensions>
 ```
@@ -31,7 +31,7 @@ In your `${baseDir}/.mvn/extensions.xml` (requires Maven 3.3.1):
 
 In your `${baseDir}/.mvn/jvm.config`:
 ```
--DfilterPlugins=maven-checkstyle-plugin:org.apache.maven.plugins,maven-pmd-plugin:org.apache.maven.plugins,spotbugs-maven-plugin:com.github.spotbugs,license-maven-plugin:org.codehaus.mojo
+-DfilterPlugins=maven-checkstyle-plugin:org.apache.maven.plugins,maven-pmd-plugin:org.apache.maven.plugins,spotbugs-maven-plugin:com.github.spotbugs,license-maven-plugin:org.codehaus.mojo,jacoco-maven-plugin:org.jacoco
 ```
 
 # Development
