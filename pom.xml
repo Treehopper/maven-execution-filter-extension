@@ -60,6 +60,8 @@
       <version>3.8.5</version>
       <scope>provided</scope>
     </dependency>
+
+    <!-- Testing -->
     <dependency>
       <groupId>org.assertj</groupId>
       <artifactId>assertj-core</artifactId>
@@ -78,7 +80,6 @@
       <version>0.11.0</version>
       <scope>test</scope>
     </dependency>
-
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter</artifactId>
@@ -118,15 +119,6 @@
     </dependency>
   </dependencies>
   <build>
-    <resources>
-      <resource>
-        <filtering>true</filtering>
-        <directory>src/main/resources</directory>
-        <includes>
-          <include>mavenBuild.properties</include>
-        </includes>
-      </resource>
-    </resources>
     <testResources>
       <testResource>
         <filtering>false</filtering>
