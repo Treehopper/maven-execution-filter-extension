@@ -41,11 +41,13 @@ public class PropertiesProviderTest {
   }
 
   @Test
-  public void defaultsIncludeArchUnitAndSortPom() {
+  public void defaultsIncludeArchUnitSortPomSourceAndJavadoc() {
     assertThat(propertiesProvider.getPluginDescriptors())
         .contains(
             "arch-unit-maven-plugin:com.societegenerale.commons",
-            "sortpom-maven-plugin:com.github.ekryd.sortpom");
+            "sortpom-maven-plugin:com.github.ekryd.sortpom",
+            "maven-source-plugin:org.apache.maven.plugins",
+            "maven-javadoc-plugin:org.apache.maven.plugins");
   }
 
   @Test

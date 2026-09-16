@@ -44,7 +44,9 @@ public class PropertiesProvider {
           "license-maven-plugin:org.codehaus.mojo",
           "jacoco-maven-plugin:org.jacoco",
           "arch-unit-maven-plugin:com.societegenerale.commons",
-          "sortpom-maven-plugin:com.github.ekryd.sortpom");
+          "sortpom-maven-plugin:com.github.ekryd.sortpom",
+          "maven-source-plugin:org.apache.maven.plugins",
+          "maven-javadoc-plugin:org.apache.maven.plugins");
 
   /**
    * The plugin descriptors to filter out of the build.

@@ -12,7 +12,8 @@ inside an (active) `<profile>`.
 
 ## Default behaviour
 Out of the box, with no configuration at all, the extension removes the following widely-used
-checker/reporting plugins from every build:
+checker/reporting plugins, plus the plugins that build release artifacts you don't need for local
+development, from every build:
 - `maven-checkstyle-plugin`
 - `maven-pmd-plugin`
 - `spotbugs-maven-plugin`
@@ -20,10 +21,14 @@ checker/reporting plugins from every build:
 - `jacoco-maven-plugin`
 - `arch-unit-maven-plugin`
 - `sortpom-maven-plugin`
+- `maven-source-plugin`
+- `maven-javadoc-plugin`
 
-These are exactly the kind of plugins that are already enforced by your CI pipeline against a
+The checker/reporting plugins are exactly the kind already enforced by your CI pipeline against a
 central repository, so re-running (and re-reading the same warnings from) them on every local
-build is mostly wasted time.
+build is mostly wasted time. `maven-source-plugin` and `maven-javadoc-plugin` only matter when
+publishing a release, so there is no reason to build sources/javadoc jars on every local build
+either.
 
 # Example Usage
 In your `${baseDir}/.mvn/extensions.xml` (requires Maven 3.3.1):
@@ -54,7 +59,7 @@ of every local build.
 To filter a different set of plugins, set the `filterPlugins` system property to a comma-separated
 list of `artifactId[:groupId[:version]]` descriptors, e.g. in your `${baseDir}/.mvn/jvm.config`:
 ```
--DfilterPlugins=maven-checkstyle-plugin:org.apache.maven.plugins,maven-pmd-plugin:org.apache.maven.plugins,spotbugs-maven-plugin:com.github.spotbugs,license-maven-plugin:org.codehaus.mojo,jacoco-maven-plugin:org.jacoco,arch-unit-maven-plugin:com.societegenerale.commons,sortpom-maven-plugin:com.github.ekryd.sortpom
+-DfilterPlugins=maven-checkstyle-plugin:org.apache.maven.plugins,maven-pmd-plugin:org.apache.maven.plugins,spotbugs-maven-plugin:com.github.spotbugs,license-maven-plugin:org.codehaus.mojo,jacoco-maven-plugin:org.jacoco,arch-unit-maven-plugin:com.societegenerale.commons,sortpom-maven-plugin:com.github.ekryd.sortpom,maven-source-plugin:org.apache.maven.plugins,maven-javadoc-plugin:org.apache.maven.plugins
 ```
 Setting this property **fully replaces** the default list (it is not merged with it). `groupId`
 and `version` are optional: if omitted, the plugin is matched on the remaining segments alone (e.g.
