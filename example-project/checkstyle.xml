@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<!DOCTYPE module PUBLIC
+        "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+        "https://checkstyle.org/dtds/configuration_1_3.dtd">
+
+<!--
+    Deliberately minimal: just enough to demonstrate the extension. Main.java below violates
+    AvoidStarImport, so this ruleset fails the build whenever checkstyle actually runs.
+-->
+<module name="Checker">
+  <property name="severity" value="error"/>
+
+  <module name="TreeWalker">
+    <module name="AvoidStarImport"/>
+  </module>
+</module>

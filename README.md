@@ -32,22 +32,21 @@ In your `${baseDir}/.mvn/extensions.xml` (requires Maven 3.3.1):
     <extension>
         <groupId>com.github.Treehopper</groupId>
         <artifactId>maven-execution-filter-extension</artifactId>
-        <version>1.4.0-alpha</version>
+        <version>1.6.0-alpha</version>
     </extension>
 </extensions>
 ```
 
-```xml
-<pluginRepositories>
-    <pluginRepository>
-        <id>jitpack.io</id>
-        <url>https://jitpack.io</url>
-    </pluginRepository>
-</pluginRepositories>
-```
+This artifact is only published to [JitPack](https://jitpack.io), not Maven Central, and Maven
+resolves core extensions before it reads `pom.xml` or activates any `settings.xml` profile - a
+`<pluginRepositories>` entry in either place cannot make JitPack available to them. In practice you
+need a repository manager (e.g. Nexus/Artifactory) that mirrors JitPack for you, or you can build
+and `mvn install` this extension from source into your own local repository, which sidesteps
+JitPack entirely - see [`example-project`](example-project) for a runnable demonstration of exactly
+that.
 
-That's it - the [default plugin list](#default-behaviour) above is now filtered out of every local
-build.
+Once resolved, that's it - the [default plugin list](#default-behaviour) above is now filtered out
+of every local build.
 
 ## Customizing the filtered plugins
 To filter a different set of plugins, set the `filterPlugins` system property to a comma-separated
