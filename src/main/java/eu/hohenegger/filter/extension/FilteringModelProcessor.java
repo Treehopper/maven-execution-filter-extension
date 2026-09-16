@@ -49,14 +49,22 @@ public class FilteringModelProcessor extends DefaultModelProcessor {
 
   @Requirement private Logger logger = new ConsoleLogger();
 
-  private final List<Plugin> filteredPlugins;
+  private final PropertiesProvider propertiesProvider;
 
   @Inject
   public FilteringModelProcessor(PropertiesProvider propertiesProvider) {
-    filteredPlugins =
-        propertiesProvider.getPluginDescriptors().stream()
-            .map(this::loadPluginToBeFiltered)
-            .collect(toList());
+    this.propertiesProvider = propertiesProvider;
+  }
+
+  /**
+   * Re-read on every call rather than cached at construction time, so a long-lived component
+   * instance (e.g. a Maven daemon such as mvnd reusing it across builds) picks up a changed {@code
+   * filterPlugins} value on the very next build, without needing to restart.
+   */
+  private List<Plugin> currentFilteredPlugins() {
+    return propertiesProvider.getPluginDescriptors().stream()
+        .map(this::loadPluginToBeFiltered)
+        .collect(toList());
   }
 
   private Plugin loadPluginToBeFiltered(String pluginDescriptor) {
@@ -122,28 +130,31 @@ public class FilteringModelProcessor extends DefaultModelProcessor {
     return "pom.xml".equals(fileName);
   }
 
-  synchronized Model filter(Model model) {
+  Model filter(Model model) {
+    List<Plugin> filteredPlugins = currentFilteredPlugins();
     if (filteredPlugins.isEmpty()) {
       return model;
     }
 
     logger.debug("filtering: " + model);
 
-    filterBuild(model.getBuild());
-    model.getProfiles().forEach(profile -> filterBuild(profile.getBuild()));
+    filterBuild(model.getBuild(), filteredPlugins);
+    model.getProfiles().forEach(profile -> filterBuild(profile.getBuild(), filteredPlugins));
 
     return model;
   }
 
-  private void filterBuild(BuildBase build) {
+  private void filterBuild(BuildBase build, List<Plugin> filteredPlugins) {
     if (build == null) {
       return;
     }
     build.setPlugins(
-        build.getPlugins().stream().filter(not(this::isFilteredPlugin)).collect(toList()));
+        build.getPlugins().stream()
+            .filter(not(plugin -> isFilteredPlugin(plugin, filteredPlugins)))
+            .collect(toList()));
   }
 
-  boolean isFilteredPlugin(Plugin plugin) {
+  boolean isFilteredPlugin(Plugin plugin, List<Plugin> filteredPlugins) {
     Optional<Plugin> ofilteredPlugin =
         filteredPlugins.stream()
             .filter(filteredPlugin -> matches(plugin, filteredPlugin))

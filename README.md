@@ -68,6 +68,13 @@ property with a blank value on the command line, which takes precedence over `jv
 mvn -DfilterPlugins= verify
 ```
 
+## Compatibility with mvnd (the Maven Daemon)
+The extension re-reads `filterPlugins` on every build rather than caching it once, so it correctly
+picks up a different value on the next `mvnd` invocation even when the daemon reuses the same
+warm JVM (and thus the same extension component instance) - no need to run `mvnd --stop` in
+between. (Resolving the extension itself from JitPack under `mvnd` is a separate matter - see the
+note on core extension resolution above.)
+
 # Development
 [![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/Treehopper/maven-execution-filter-extension)
 
