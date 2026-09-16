@@ -41,6 +41,14 @@ public class PropertiesProviderTest {
   }
 
   @Test
+  public void defaultsIncludeArchUnitAndSortPom() {
+    assertThat(propertiesProvider.getPluginDescriptors())
+        .contains(
+            "arch-unit-maven-plugin:com.societegenerale.commons",
+            "sortpom-maven-plugin:com.github.ekryd.sortpom");
+  }
+
+  @Test
   public void usesConfiguredCommaSeparatedList() {
     System.setProperty(FILTER_PLUGINS_SYS_PROP, "maven-checkstyle-plugin, maven-pmd-plugin");
 

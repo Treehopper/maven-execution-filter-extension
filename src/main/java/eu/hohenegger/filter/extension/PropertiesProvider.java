@@ -42,7 +42,9 @@ public class PropertiesProvider {
           "maven-pmd-plugin:org.apache.maven.plugins",
           "spotbugs-maven-plugin:com.github.spotbugs",
           "license-maven-plugin:org.codehaus.mojo",
-          "jacoco-maven-plugin:org.jacoco");
+          "jacoco-maven-plugin:org.jacoco",
+          "arch-unit-maven-plugin:com.societegenerale.commons",
+          "sortpom-maven-plugin:com.github.ekryd.sortpom");
 
   /**
    * The plugin descriptors to filter out of the build.

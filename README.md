@@ -18,6 +18,8 @@ checker/reporting plugins from every build:
 - `spotbugs-maven-plugin`
 - `license-maven-plugin`
 - `jacoco-maven-plugin`
+- `arch-unit-maven-plugin`
+- `sortpom-maven-plugin`
 
 These are exactly the kind of plugins that are already enforced by your CI pipeline against a
 central repository, so re-running (and re-reading the same warnings from) them on every local
@@ -52,7 +54,7 @@ of every local build.
 To filter a different set of plugins, set the `filterPlugins` system property to a comma-separated
 list of `artifactId[:groupId[:version]]` descriptors, e.g. in your `${baseDir}/.mvn/jvm.config`:
 ```
--DfilterPlugins=maven-checkstyle-plugin:org.apache.maven.plugins,maven-pmd-plugin:org.apache.maven.plugins,spotbugs-maven-plugin:com.github.spotbugs,license-maven-plugin:org.codehaus.mojo,jacoco-maven-plugin:org.jacoco
+-DfilterPlugins=maven-checkstyle-plugin:org.apache.maven.plugins,maven-pmd-plugin:org.apache.maven.plugins,spotbugs-maven-plugin:com.github.spotbugs,license-maven-plugin:org.codehaus.mojo,jacoco-maven-plugin:org.jacoco,arch-unit-maven-plugin:com.societegenerale.commons,sortpom-maven-plugin:com.github.ekryd.sortpom
 ```
 Setting this property **fully replaces** the default list (it is not merged with it). `groupId`
 and `version` are optional: if omitted, the plugin is matched on the remaining segments alone (e.g.
