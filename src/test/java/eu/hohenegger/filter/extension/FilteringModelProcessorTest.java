@@ -43,7 +43,7 @@ public class FilteringModelProcessorTest {
   }
 
   private static Plugin plugin(String groupId, String artifactId) {
-    Plugin plugin = new Plugin();
+    var plugin = new Plugin();
     plugin.setGroupId(groupId);
     plugin.setArtifactId(artifactId);
     return plugin;
@@ -51,87 +51,83 @@ public class FilteringModelProcessorTest {
 
   @Test
   public void filtersConfiguredPluginByArtifactAndGroupId() {
-    FilteringModelProcessor modelProcessor =
-        processorFor("maven-checkstyle-plugin:org.apache.maven.plugins");
+    var modelProcessor = processorFor("maven-checkstyle-plugin:org.apache.maven.plugins");
 
-    Model model = new Model();
+    var model = new Model();
     model.setParent(new Parent());
-    Build build = new Build();
+    var build = new Build();
     build.addPlugin(plugin("foo", "foo.bar"));
     build.addPlugin(plugin("foo", "bar.foo"));
     build.addPlugin(plugin("org.apache.maven.plugins", "maven-checkstyle-plugin"));
     model.setBuild(build);
 
-    Model filteredModel = modelProcessor.filter(model);
+    var filteredModel = modelProcessor.filter(model);
 
-    List<Plugin> plugins = filteredModel.getBuild().getPlugins();
+    var plugins = filteredModel.getBuild().getPlugins();
     assertThat(plugins).hasSize(2);
     assertThat(plugins).extracting(Plugin::getGroupId).containsOnly("foo");
   }
 
   @Test
   public void filtersByArtifactIdAloneRegardlessOfGroupId() {
-    FilteringModelProcessor modelProcessor = processorFor("maven-checkstyle-plugin");
+    var modelProcessor = processorFor("maven-checkstyle-plugin");
 
-    Model model = new Model();
-    Build build = new Build();
+    var model = new Model();
+    var build = new Build();
     build.addPlugin(plugin("org.apache.maven.plugins", "maven-checkstyle-plugin"));
     model.setBuild(build);
 
-    Model filteredModel = modelProcessor.filter(model);
+    var filteredModel = modelProcessor.filter(model);
 
     assertThat(filteredModel.getBuild().getPlugins()).isEmpty();
   }
 
   @Test
   public void filtersPluginDeclaredWithoutExplicitGroupIdAsMavenDefaultGroupId() {
-    FilteringModelProcessor modelProcessor =
-        processorFor("maven-checkstyle-plugin:org.apache.maven.plugins");
+    var modelProcessor = processorFor("maven-checkstyle-plugin:org.apache.maven.plugins");
 
-    Model model = new Model();
-    Build build = new Build();
+    var model = new Model();
+    var build = new Build();
     build.addPlugin(plugin(null, "maven-checkstyle-plugin"));
     model.setBuild(build);
 
-    Model filteredModel = modelProcessor.filter(model);
+    var filteredModel = modelProcessor.filter(model);
 
     assertThat(filteredModel.getBuild().getPlugins()).isEmpty();
   }
 
   @Test
   public void doesNotFilterWhenVersionDoesNotMatch() {
-    FilteringModelProcessor modelProcessor =
-        processorFor("maven-checkstyle-plugin:org.apache.maven.plugins:3.1.2");
+    var modelProcessor = processorFor("maven-checkstyle-plugin:org.apache.maven.plugins:3.1.2");
 
-    Model model = new Model();
-    Build build = new Build();
-    Plugin checkstyle = plugin("org.apache.maven.plugins", "maven-checkstyle-plugin");
+    var model = new Model();
+    var build = new Build();
+    var checkstyle = plugin("org.apache.maven.plugins", "maven-checkstyle-plugin");
     checkstyle.setVersion("3.0.0");
     build.addPlugin(checkstyle);
     model.setBuild(build);
 
-    Model filteredModel = modelProcessor.filter(model);
+    var filteredModel = modelProcessor.filter(model);
 
     assertThat(filteredModel.getBuild().getPlugins()).hasSize(1);
   }
 
   @Test
   public void filtersPluginsDeclaredInsideProfiles() {
-    FilteringModelProcessor modelProcessor =
-        processorFor("maven-checkstyle-plugin:org.apache.maven.plugins");
+    var modelProcessor = processorFor("maven-checkstyle-plugin:org.apache.maven.plugins");
 
-    Model model = new Model();
-    Build build = new Build();
+    var model = new Model();
+    var build = new Build();
     build.addPlugin(plugin("foo", "foo.bar"));
     model.setBuild(build);
 
-    BuildBase profileBuild = new BuildBase();
+    var profileBuild = new BuildBase();
     profileBuild.addPlugin(plugin("org.apache.maven.plugins", "maven-checkstyle-plugin"));
-    Profile profile = new Profile();
+    var profile = new Profile();
     profile.setBuild(profileBuild);
     model.addProfile(profile);
 
-    Model filteredModel = modelProcessor.filter(model);
+    var filteredModel = modelProcessor.filter(model);
 
     assertThat(filteredModel.getBuild().getPlugins()).hasSize(1);
     assertThat(filteredModel.getProfiles().get(0).getBuild().getPlugins()).isEmpty();
@@ -139,14 +135,14 @@ public class FilteringModelProcessorTest {
 
   @Test
   public void doesNotTouchModelWhenNoPluginsAreConfigured() {
-    FilteringModelProcessor modelProcessor = processorFor();
+    var modelProcessor = processorFor();
 
-    Model model = new Model();
-    Build build = new Build();
+    var model = new Model();
+    var build = new Build();
     build.addPlugin(plugin("org.apache.maven.plugins", "maven-checkstyle-plugin"));
     model.setBuild(build);
 
-    Model filteredModel = modelProcessor.filter(model);
+    var filteredModel = modelProcessor.filter(model);
 
     assertThat(filteredModel.getBuild().getPlugins()).hasSize(1);
   }

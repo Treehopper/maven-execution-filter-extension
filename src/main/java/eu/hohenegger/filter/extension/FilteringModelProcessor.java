@@ -20,7 +20,6 @@
 package eu.hohenegger.filter.extension;
 
 import static java.util.function.Predicate.not;
-import static java.util.stream.Collectors.toList;
 
 import java.io.File;
 import java.io.IOException;
@@ -29,7 +28,6 @@ import java.io.Reader;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import javax.inject.Inject;
 import org.apache.maven.building.Source;
 import org.apache.maven.model.BuildBase;
@@ -64,22 +62,18 @@ public class FilteringModelProcessor extends DefaultModelProcessor {
   private List<Plugin> currentFilteredPlugins() {
     return propertiesProvider.getPluginDescriptors().stream()
         .map(this::loadPluginToBeFiltered)
-        .collect(toList());
+        .toList();
   }
 
   private Plugin loadPluginToBeFiltered(String pluginDescriptor) {
-    List<String> segments = List.of(pluginDescriptor.split(":"));
-    if (segments.isEmpty()) {
-      throw new RuntimeException(
-          "pluginDescriptor must be of format: artifactId[:groupId[:version]]");
+    var segments = pluginDescriptor.split(":");
+    var plugin = new Plugin();
+    plugin.setArtifactId(segments[0]);
+    if (segments.length > 1) {
+      plugin.setGroupId(segments[1]);
     }
-    Plugin plugin = new Plugin();
-    plugin.setArtifactId(segments.get(0));
-    if (segments.size() > 1) {
-      plugin.setGroupId(segments.get(1));
-    }
-    if (segments.size() > 2) {
-      plugin.setVersion(segments.get(2));
+    if (segments.length > 2) {
+      plugin.setVersion(segments[2]);
     }
     return plugin;
   }
@@ -107,8 +101,8 @@ public class FilteringModelProcessor extends DefaultModelProcessor {
   }
 
   private static String locationOf(Map<String, ?> options) {
-    Object source = options == null ? null : options.get(ModelProcessor.SOURCE);
-    return source instanceof Source ? ((Source) source).getLocation() : null;
+    var source = options == null ? null : options.get(ModelProcessor.SOURCE);
+    return source instanceof Source theSource ? theSource.getLocation() : null;
   }
 
   /**
@@ -124,14 +118,14 @@ public class FilteringModelProcessor extends DefaultModelProcessor {
     if (location == null) {
       return true;
     }
-    String normalized = location.replace('\\', '/');
-    int lastSlash = normalized.lastIndexOf('/');
-    String fileName = lastSlash >= 0 ? normalized.substring(lastSlash + 1) : normalized;
+    var normalized = location.replace('\\', '/');
+    var lastSlash = normalized.lastIndexOf('/');
+    var fileName = lastSlash >= 0 ? normalized.substring(lastSlash + 1) : normalized;
     return "pom.xml".equals(fileName);
   }
 
   Model filter(Model model) {
-    List<Plugin> filteredPlugins = currentFilteredPlugins();
+    var filteredPlugins = currentFilteredPlugins();
     if (filteredPlugins.isEmpty()) {
       return model;
     }
@@ -151,20 +145,19 @@ public class FilteringModelProcessor extends DefaultModelProcessor {
     build.setPlugins(
         build.getPlugins().stream()
             .filter(not(plugin -> isFilteredPlugin(plugin, filteredPlugins)))
-            .collect(toList()));
+            .toList());
   }
 
   boolean isFilteredPlugin(Plugin plugin, List<Plugin> filteredPlugins) {
-    Optional<Plugin> ofilteredPlugin =
+    var ofilteredPlugin =
         filteredPlugins.stream()
             .filter(filteredPlugin -> matches(plugin, filteredPlugin))
             .findFirst();
 
     if (ofilteredPlugin.isPresent()) {
       logger.info(
-          String.format(
-              "Plugin [%s:%s:%s] filtered",
-              plugin.getGroupId(), plugin.getArtifactId(), plugin.getVersion()));
+          "Plugin [%s:%s:%s] filtered"
+              .formatted(plugin.getGroupId(), plugin.getArtifactId(), plugin.getVersion()));
     }
 
     return ofilteredPlugin.isPresent();

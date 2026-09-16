@@ -81,6 +81,9 @@ between. (Resolving the extension itself from JitPack under `mvnd` is a separate
 note on core extension resolution above.)
 
 # Development
+Building this project requires JDK 17+ (the compiled classes still target Java 17 - see
+`java.version` in `pom.xml`).
+
 [![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/Treehopper/maven-execution-filter-extension)
 
 [![CircleCI](https://circleci.com/gh/Treehopper/maven-execution-filter-extension/tree/main.svg?style=svg)](https://circleci.com/gh/Treehopper/maven-execution-filter-extension/tree/main)

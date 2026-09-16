@@ -20,7 +20,6 @@
 package eu.hohenegger.filter.extension;
 
 import static java.util.function.Predicate.not;
-import static java.util.stream.Collectors.toList;
 
 import java.util.Arrays;
 import java.util.List;
@@ -64,6 +63,6 @@ public class PropertiesProvider {
     return Arrays.stream(System.getProperty(FILTER_PLUGINS_SYS_PROP, "").split(","))
         .map(String::trim)
         .filter(not(String::isEmpty))
-        .collect(toList());
+        .toList();
   }
 }
