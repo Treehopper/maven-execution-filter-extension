@@ -19,6 +19,10 @@
  */
 package eu.hohenegger.filter.extension;
 
+import static java.util.function.Predicate.not;
+import static java.util.stream.Collectors.toList;
+
+import java.util.Arrays;
 import java.util.List;
 import javax.inject.Named;
 
@@ -27,11 +31,36 @@ public class PropertiesProvider {
 
   public static final String FILTER_PLUGINS_SYS_PROP = "filterPlugins";
 
-  public boolean isConfigured() {
-    return System.getProperties().containsKey(FILTER_PLUGINS_SYS_PROP);
-  }
+  /**
+   * Widely-used checker/reporting plugins that are removed from the build by default, so that a
+   * plain install of this extension already speeds up local builds without any further
+   * configuration.
+   */
+  static final List<String> DEFAULT_FILTERED_PLUGIN_DESCRIPTORS =
+      List.of(
+          "maven-checkstyle-plugin:org.apache.maven.plugins",
+          "maven-pmd-plugin:org.apache.maven.plugins",
+          "spotbugs-maven-plugin:com.github.spotbugs",
+          "license-maven-plugin:org.codehaus.mojo",
+          "jacoco-maven-plugin:org.jacoco");
 
+  /**
+   * The plugin descriptors to filter out of the build.
+   *
+   * <p>If the {@value #FILTER_PLUGINS_SYS_PROP} system property is not set at all, {@link
+   * #DEFAULT_FILTERED_PLUGIN_DESCRIPTORS} is used. If it is set, its comma-separated content
+   * fully replaces the default list; setting it to a blank value (e.g. {@code
+   * -DfilterPlugins=}) disables filtering entirely, which is useful to restore the original,
+   * unfiltered build on a CI server.
+   */
   public List<String> getPluginDescriptors() {
-    return List.of(System.getProperty(FILTER_PLUGINS_SYS_PROP).split(","));
+    if (!System.getProperties().containsKey(FILTER_PLUGINS_SYS_PROP)) {
+      return DEFAULT_FILTERED_PLUGIN_DESCRIPTORS;
+    }
+
+    return Arrays.stream(System.getProperty(FILTER_PLUGINS_SYS_PROP, "").split(","))
+        .map(String::trim)
+        .filter(not(String::isEmpty))
+        .collect(toList());
   }
 }

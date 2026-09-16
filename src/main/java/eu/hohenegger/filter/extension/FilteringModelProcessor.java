@@ -19,7 +19,6 @@
  */
 package eu.hohenegger.filter.extension;
 
-import static java.util.Comparator.comparing;
 import static java.util.function.Predicate.not;
 import static java.util.stream.Collectors.toList;
 
@@ -27,13 +26,13 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import javax.inject.Inject;
-import org.apache.maven.model.Build;
+import org.apache.maven.building.Source;
+import org.apache.maven.model.BuildBase;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.Plugin;
 import org.apache.maven.model.building.DefaultModelProcessor;
@@ -46,30 +45,23 @@ import org.codehaus.plexus.logging.console.ConsoleLogger;
 @Component(role = ModelProcessor.class, hint = "filtering-model-reader")
 public class FilteringModelProcessor extends DefaultModelProcessor {
 
+  private static final String DEFAULT_PLUGIN_GROUP_ID = "org.apache.maven.plugins";
+
   @Requirement private Logger logger = new ConsoleLogger();
 
-  private List<Plugin> filteredPlugins = Collections.emptyList();
-  private Comparator<Plugin> comparePartially;
+  private final List<Plugin> filteredPlugins;
 
   @Inject
   public FilteringModelProcessor(PropertiesProvider propertiesProvider) {
-    comparePartially =
-        comparing(Plugin::getArtifactId)
-            .thenComparing(Plugin::getGroupId, Comparator.nullsFirst(null));
-
-    if (propertiesProvider.isConfigured()) {
-      List<String> pluginDescriptors = propertiesProvider.getPluginDescriptors();
-      if (pluginDescriptors.isEmpty()) {
-        return;
-      }
-      filteredPlugins =
-          pluginDescriptors.stream().map(this::loadPluginToBeFiltered).collect(toList());
-    }
+    filteredPlugins =
+        propertiesProvider.getPluginDescriptors().stream()
+            .map(this::loadPluginToBeFiltered)
+            .collect(toList());
   }
 
   private Plugin loadPluginToBeFiltered(String pluginDescriptor) {
     List<String> segments = List.of(pluginDescriptor.split(":"));
-    if (segments.size() < 1) {
+    if (segments.isEmpty()) {
       throw new RuntimeException(
           "pluginDescriptor must be of format: artifactId[:groupId[:version]]");
     }
@@ -86,36 +78,76 @@ public class FilteringModelProcessor extends DefaultModelProcessor {
 
   @Override
   public Model read(File input, Map<String, ?> options) throws IOException {
-    return filter(super.read(input, options)).clone();
+    return process(super.read(input, options), input.getName());
   }
 
   @Override
   public Model read(Reader input, Map<String, ?> options) throws IOException {
-    return filter(super.read(input, options)).clone();
+    return process(super.read(input, options), locationOf(options));
   }
 
   @Override
   public Model read(InputStream input, Map<String, ?> options) throws IOException {
-    return filter(super.read(input, options)).clone();
+    return process(super.read(input, options), locationOf(options));
+  }
+
+  private Model process(Model model, String location) throws IOException {
+    if (isProjectPom(location)) {
+      filter(model);
+    }
+    return model.clone();
+  }
+
+  private static String locationOf(Map<String, ?> options) {
+    Object source = options == null ? null : options.get(ModelProcessor.SOURCE);
+    return source instanceof Source ? ((Source) source).getLocation() : null;
+  }
+
+  /**
+   * Distinguishes an actual project/parent POM (always named {@code pom.xml} on disk) from a POM
+   * that Maven reads merely to resolve an artifact's metadata (dependency, plugin, extension,
+   * ...), which is cached in the local repository under {@code <artifactId>-<version>.pom}.
+   * Without this check, plugins would be "filtered" (and logged) out of unrelated third-party
+   * POMs read only for dependency resolution, which has no effect on the actual build but
+   * produces confusing log noise - exactly what this extension is meant to avoid. When the
+   * location cannot be determined, filtering is applied, since that is the common case for an
+   * actual project POM read from disk.
+   */
+  private static boolean isProjectPom(String location) {
+    if (location == null) {
+      return true;
+    }
+    String normalized = location.replace('\\', '/');
+    int lastSlash = normalized.lastIndexOf('/');
+    String fileName = lastSlash >= 0 ? normalized.substring(lastSlash + 1) : normalized;
+    return "pom.xml".equals(fileName);
   }
 
   synchronized Model filter(Model model) {
-    logger.debug("filtering: " + model);
-
-    Build build = model.getBuild();
-    if (build == null) {
+    if (filteredPlugins.isEmpty()) {
       return model;
     }
-    List<Plugin> plugins = build.getPlugins();
-    build.setPlugins(plugins.stream().filter(not(this::isFilteredPlugin)).collect(toList()));
+
+    logger.debug("filtering: " + model);
+
+    filterBuild(model.getBuild());
+    model.getProfiles().forEach(profile -> filterBuild(profile.getBuild()));
 
     return model;
+  }
+
+  private void filterBuild(BuildBase build) {
+    if (build == null) {
+      return;
+    }
+    build.setPlugins(
+        build.getPlugins().stream().filter(not(this::isFilteredPlugin)).collect(toList()));
   }
 
   boolean isFilteredPlugin(Plugin plugin) {
     Optional<Plugin> ofilteredPlugin =
         filteredPlugins.stream()
-            .filter(filteredPlugin -> comparePartially.compare(plugin, filteredPlugin) == 0)
+            .filter(filteredPlugin -> matches(plugin, filteredPlugin))
             .findFirst();
 
     if (ofilteredPlugin.isPresent()) {
@@ -126,5 +158,28 @@ public class FilteringModelProcessor extends DefaultModelProcessor {
     }
 
     return ofilteredPlugin.isPresent();
+  }
+
+  /**
+   * A plugin matches a filter descriptor if the artifactId is equal, and the groupId/version are
+   * either equal or left unspecified (null) in the filter descriptor. Plugin declarations
+   * omitting the groupId (legal for core plugins) are compared as if they had Maven's default
+   * {@value #DEFAULT_PLUGIN_GROUP_ID}, since that default is only applied later on, during model
+   * inheritance/normalization.
+   */
+  private boolean matches(Plugin plugin, Plugin filteredPlugin) {
+    if (!Objects.equals(plugin.getArtifactId(), filteredPlugin.getArtifactId())) {
+      return false;
+    }
+    if (filteredPlugin.getGroupId() != null
+        && !filteredPlugin.getGroupId().equals(effectiveGroupId(plugin))) {
+      return false;
+    }
+    return filteredPlugin.getVersion() == null
+        || filteredPlugin.getVersion().equals(plugin.getVersion());
+  }
+
+  private String effectiveGroupId(Plugin plugin) {
+    return plugin.getGroupId() != null ? plugin.getGroupId() : DEFAULT_PLUGIN_GROUP_ID;
   }
 }

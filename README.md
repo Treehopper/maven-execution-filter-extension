@@ -5,6 +5,23 @@ The intended purpose of this extension is to improve the developer UX when worki
 ## Why not skip those plugin executions using common skip options?
 Skip-options have to be found, and applied correctly in your IDE, CLI, etc.
 If they are applied correctly, the plugins will still be downloaded, started, and pollute logs.
+This extension instead removes the plugin declaration from the in-memory Maven model before it is
+resolved, so the plugin is never downloaded, never started, and never gets a chance to log anything
+- for plugins declared directly in `<build><plugins>`, inherited from a parent POM, or declared
+inside an (active) `<profile>`.
+
+## Default behaviour
+Out of the box, with no configuration at all, the extension removes the following widely-used
+checker/reporting plugins from every build:
+- `maven-checkstyle-plugin`
+- `maven-pmd-plugin`
+- `spotbugs-maven-plugin`
+- `license-maven-plugin`
+- `jacoco-maven-plugin`
+
+These are exactly the kind of plugins that are already enforced by your CI pipeline against a
+central repository, so re-running (and re-reading the same warnings from) them on every local
+build is mostly wasted time.
 
 # Example Usage
 In your `${baseDir}/.mvn/extensions.xml` (requires Maven 3.3.1):
@@ -29,9 +46,25 @@ In your `${baseDir}/.mvn/extensions.xml` (requires Maven 3.3.1):
 </pluginRepositories>
 ```
 
-In your `${baseDir}/.mvn/jvm.config`:
+That's it - the [default plugin list](#default-behaviour) above is now filtered out of every local
+build.
+
+## Customizing the filtered plugins
+To filter a different set of plugins, set the `filterPlugins` system property to a comma-separated
+list of `artifactId[:groupId[:version]]` descriptors, e.g. in your `${baseDir}/.mvn/jvm.config`:
 ```
 -DfilterPlugins=maven-checkstyle-plugin:org.apache.maven.plugins,maven-pmd-plugin:org.apache.maven.plugins,spotbugs-maven-plugin:com.github.spotbugs,license-maven-plugin:org.codehaus.mojo,jacoco-maven-plugin:org.jacoco
+```
+Setting this property **fully replaces** the default list (it is not merged with it). `groupId`
+and `version` are optional: if omitted, the plugin is matched on the remaining segments alone (e.g.
+`maven-checkstyle-plugin` matches that artifactId regardless of groupId or version).
+
+## Disabling the extension (e.g. for CI)
+Since `.mvn/jvm.config` is typically committed to the repository, it applies to every build,
+including your CI pipeline. To let CI run with the full, unfiltered set of plugins, override the
+property with a blank value on the command line, which takes precedence over `jvm.config`:
+```
+mvn -DfilterPlugins= verify
 ```
 
 # Development

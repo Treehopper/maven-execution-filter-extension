@@ -36,11 +36,20 @@ public class ExtensionIT {
   @MavenOption(NO_TRANSFER_PROGRESS)
   @MavenOption(ERRORS)
   void no_config(MavenExecutionResult result) {
-    assertThat(result).isFailure();
+    assertThat(result).isSuccessful();
     assertThat(result)
         .out()
         .info()
-        .contains("--- maven-checkstyle-plugin:3.1.2:check (default) @ bar ---");
+        .contains("Plugin [org.apache.maven.plugins:maven-checkstyle-plugin:3.1.2] filtered");
+  }
+
+  @MavenTest
+  @MavenOption(NO_TRANSFER_PROGRESS)
+  @MavenOption(ERRORS)
+  @SystemProperty(value = FILTER_PLUGINS_SYS_PROP, content = " ")
+  void disabled(MavenExecutionResult result) {
+    assertThat(result).isFailure();
+    assertThat(result).out().info().contains("--- checkstyle:3.1.2:check (default) @ bar ---");
   }
 
   @MavenTest
@@ -75,6 +84,16 @@ public class ExtensionIT {
         .out()
         .info()
         .contains("Plugin [org.apache.maven.plugins:maven-checkstyle-plugin:3.1.2] filtered")
-        .contains("Plugin [org.apache.maven.plugins:maven-pmd-plugin:2.4] filtered");
+        .contains("Plugin [org.apache.maven.plugins:maven-pmd-plugin:3.21.2] filtered");
+  }
+
+  @MavenTest
+  @MavenOption(NO_TRANSFER_PROGRESS)
+  void profile_plugin(MavenExecutionResult result) {
+    assertThat(result).isSuccessful();
+    assertThat(result)
+        .out()
+        .info()
+        .contains("Plugin [org.apache.maven.plugins:maven-checkstyle-plugin:3.1.2] filtered");
   }
 }
