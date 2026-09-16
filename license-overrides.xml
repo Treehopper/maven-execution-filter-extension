@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ ! Supplies a license URL for dependencies whose own pom.xml omits one, so that
+ ! license:download-licenses does not warn about them. aopalliance:aopalliance:1.0 declares its
+ ! license as plain "Public Domain" with no URL - there is no canonical license text to link to,
+ ! so this points at the CC0 public domain deed as a reasonable stand-in.
+-->
+<licenseSummary xmlns="http://mojo.codehaus.org/license-maven-plugin/license-summary"
+                 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                 xsi:schemaLocation="http://mojo.codehaus.org/license-maven-plugin/license-summary http://mojo.codehaus.org/license-maven-plugin/license-summary.xsd">
+  <dependencies>
+    <dependency>
+      <groupId>aopalliance</groupId>
+      <artifactId>aopalliance</artifactId>
+      <version>1.0</version>
+      <licenses>
+        <license>
+          <name>Public Domain</name>
+          <url>https://creativecommons.org/publicdomain/mark/1.0/</url>
+        </license>
+      </licenses>
+    </dependency>
+  </dependencies>
+</licenseSummary>

@@ -168,6 +168,7 @@
             <configuration>
               <licensesOutputDirectory>${project.build.directory}/classes/licenses</licensesOutputDirectory>
               <licensesOutputFile>${project.build.directory}/classes/licenses.xml</licensesOutputFile>
+              <licensesConfigFile>${project.basedir}/license-overrides.xml</licensesConfigFile>
             </configuration>
           </execution>
         </executions>
