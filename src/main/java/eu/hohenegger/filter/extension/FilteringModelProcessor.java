@@ -105,13 +105,12 @@ public class FilteringModelProcessor extends DefaultModelProcessor {
 
   /**
    * Distinguishes an actual project/parent POM (always named {@code pom.xml} on disk) from a POM
-   * that Maven reads merely to resolve an artifact's metadata (dependency, plugin, extension,
-   * ...), which is cached in the local repository under {@code <artifactId>-<version>.pom}.
-   * Without this check, plugins would be "filtered" (and logged) out of unrelated third-party
-   * POMs read only for dependency resolution, which has no effect on the actual build but
-   * produces confusing log noise - exactly what this extension is meant to avoid. When the
-   * location cannot be determined, filtering is applied, since that is the common case for an
-   * actual project POM read from disk.
+   * that Maven reads merely to resolve an artifact's metadata (dependency, plugin, extension, ...),
+   * which is cached in the local repository under {@code <artifactId>-<version>.pom}. Without this
+   * check, plugins would be "filtered" (and logged) out of unrelated third-party POMs read only for
+   * dependency resolution, which has no effect on the actual build but produces confusing log noise
+   * - exactly what this extension is meant to avoid. When the location cannot be determined,
+   * filtering is applied, since that is the common case for an actual project POM read from disk.
    */
   private static boolean isProjectPom(String location) {
     if (location == null) {
@@ -162,9 +161,9 @@ public class FilteringModelProcessor extends DefaultModelProcessor {
 
   /**
    * A plugin matches a filter descriptor if the artifactId is equal, and the groupId/version are
-   * either equal or left unspecified (null) in the filter descriptor. Plugin declarations
-   * omitting the groupId (legal for core plugins) are compared as if they had Maven's default
-   * {@value #DEFAULT_PLUGIN_GROUP_ID}, since that default is only applied later on, during model
+   * either equal or left unspecified (null) in the filter descriptor. Plugin declarations omitting
+   * the groupId (legal for core plugins) are compared as if they had Maven's default {@value
+   * #DEFAULT_PLUGIN_GROUP_ID}, since that default is only applied later on, during model
    * inheritance/normalization.
    */
   private boolean matches(Plugin plugin, Plugin filteredPlugin) {

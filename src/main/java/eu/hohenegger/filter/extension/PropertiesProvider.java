@@ -48,10 +48,9 @@ public class PropertiesProvider {
    * The plugin descriptors to filter out of the build.
    *
    * <p>If the {@value #FILTER_PLUGINS_SYS_PROP} system property is not set at all, {@link
-   * #DEFAULT_FILTERED_PLUGIN_DESCRIPTORS} is used. If it is set, its comma-separated content
-   * fully replaces the default list; setting it to a blank value (e.g. {@code
-   * -DfilterPlugins=}) disables filtering entirely, which is useful to restore the original,
-   * unfiltered build on a CI server.
+   * #DEFAULT_FILTERED_PLUGIN_DESCRIPTORS} is used. If it is set, its comma-separated content fully
+   * replaces the default list; setting it to a blank value (e.g. {@code -DfilterPlugins=}) disables
+   * filtering entirely, which is useful to restore the original, unfiltered build on a CI server.
    */
   public List<String> getPluginDescriptors() {
     if (!System.getProperties().containsKey(FILTER_PLUGINS_SYS_PROP)) {
