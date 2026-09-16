@@ -28,12 +28,14 @@ import org.apache.maven.model.Model;
 import org.apache.maven.model.Parent;
 import org.apache.maven.model.Plugin;
 import org.apache.maven.model.Profile;
+import org.codehaus.plexus.logging.console.ConsoleLogger;
 import org.junit.jupiter.api.Test;
 
 public class FilteringModelProcessorTest {
 
   private static FilteringModelProcessor processorFor(String... pluginDescriptors) {
     return new FilteringModelProcessor(
+        new ConsoleLogger(),
         new PropertiesProvider() {
           @Override
           public List<String> getPluginDescriptors() {
