@@ -2,6 +2,7 @@
 [![Jitpack](https://jitpack.io/v/Treehopper/maven-execution-filter-extension.svg)](https://jitpack.io/#Treehopper/maven-execution-filter-extension)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/47d6016afc8e40a0a9684da2f6b2ea44)](https://app.codacy.com/gh/Treehopper/maven-execution-filter-extension/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
+[![Codacy Badge](https://app.codacy.com/project/badge/Coverage/47d6016afc8e40a0a9684da2f6b2ea44)](https://app.codacy.com/gh/Treehopper/maven-execution-filter-extension/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_coverage)
 
 A Maven Extension to remove (not skip) plugins from your build at runtime w/o modifying pom-files, resulting in faster builds, smaller logs and the ability to temporarily ignore minor issues.
 The intended purpose of this extension is to improve the developer UX when working with large builds, which often use parent-poms optimized for CI.
@@ -162,6 +163,5 @@ The repository is connected to [Codacy](https://app.codacy.com/gh/Treehopper/mav
 for code quality analysis. `.github/workflows/ci.yml` builds and tests every push/PR, generates a
 JaCoCo coverage report (unit tests only - the integration tests fork entirely separate `mvn`
 processes JaCoCo's agent doesn't reach), and uploads it to Codacy via the `CODACY_PROJECT_TOKEN`
-repository secret. The coverage badge isn't in the README yet - grab it from the dashboard's
-Settings -> Badges once enough history has accumulated for Codacy to report a number.
+repository secret.
 
