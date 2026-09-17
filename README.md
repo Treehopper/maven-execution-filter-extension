@@ -43,7 +43,7 @@ In your `${baseDir}/.mvn/extensions.xml` (requires Maven 3.3.1):
     <extension>
         <groupId>com.github.Treehopper</groupId>
         <artifactId>maven-execution-filter-extension</artifactId>
-        <version>1.7.0-alpha</version>
+        <version>1.8.0-alpha</version>
     </extension>
 </extensions>
 ```
