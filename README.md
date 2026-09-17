@@ -66,15 +66,17 @@ and `version` are optional: if omitted, the plugin is matched on the remaining s
 `maven-checkstyle-plugin` matches that artifactId regardless of groupId or version).
 
 ## Seeing what's being filtered
-Add `-DfilterInfo` to any build to print, once at the start, exactly which plugins were removed
-from that build, the full list currently configured to be filtered, and a short reminder of how to
-customize or disable it:
+Add `-DfilterInfo` to any build to print, once at the start: exactly which plugins were removed
+from that build, which of the plugins still declared in it you could add to the filter too, the
+full list currently configured to be filtered, and a short reminder of how to customize or disable
+it:
 ```
 mvn -DfilterInfo verify
 ```
 ```
 [INFO] maven-execution-filter-extension (-DfilterInfo):
 [INFO]   filtered from this build : org.apache.maven.plugins:maven-checkstyle-plugin:3.1.2
+[INFO]   could still be filtered  : org.apache.maven.plugins:maven-surefire-plugin:3.6.0
 [INFO]   configured to be filtered: maven-checkstyle-plugin:org.apache.maven.plugins, ...
 [INFO]   customize the list       : -DfilterPlugins=artifactId[:groupId[:version]][,...]
 [INFO]   disable entirely         : -DfilterPlugins=

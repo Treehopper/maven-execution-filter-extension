@@ -133,39 +133,48 @@ public class FilteringModelProcessor extends DefaultModelProcessor {
     var filteredPlugins = parseFilteredPlugins(configuredDescriptors);
 
     var removedPlugins = new ArrayList<Plugin>();
+    var remainingPlugins = new ArrayList<Plugin>();
     if (!filteredPlugins.isEmpty()) {
       logger.debug("filtering: " + model);
-      removedPlugins.addAll(filterBuild(model.getBuild(), filteredPlugins));
+      filterBuild(model.getBuild(), filteredPlugins, removedPlugins, remainingPlugins);
       model
           .getProfiles()
           .forEach(
-              profile -> removedPlugins.addAll(filterBuild(profile.getBuild(), filteredPlugins)));
+              profile ->
+                  filterBuild(
+                      profile.getBuild(), filteredPlugins, removedPlugins, remainingPlugins));
     }
 
-    printInfoOnce(configuredDescriptors, removedPlugins);
+    printInfoOnce(configuredDescriptors, removedPlugins, remainingPlugins);
 
     return model;
   }
 
-  private List<Plugin> filterBuild(BuildBase build, List<Plugin> filteredPlugins) {
+  private void filterBuild(
+      BuildBase build, List<Plugin> filteredPlugins, List<Plugin> removed, List<Plugin> remaining) {
     if (build == null) {
-      return List.of();
+      return;
     }
     var partitioned =
         build.getPlugins().stream()
             .collect(
                 Collectors.partitioningBy(plugin -> isFilteredPlugin(plugin, filteredPlugins)));
     build.setPlugins(partitioned.get(false));
-    return partitioned.get(true);
+    removed.addAll(partitioned.get(true));
+    remaining.addAll(partitioned.get(false));
   }
 
   /**
    * Prints, once per component lifetime (i.e. once per build for plain {@code mvn}; under a reused
    * daemon such as mvnd, only for the first build it serves), a summary of what this extension
-   * actually removed from the build plus a short usage reminder - gated behind {@value
+   * actually removed from the build, which of the plugins still declared in it could be added to
+   * the filter too, plus a short usage reminder - gated behind {@value
    * PropertiesProvider#FILTER_INFO_SYS_PROP} so it stays silent otherwise.
    */
-  private void printInfoOnce(List<String> configuredDescriptors, List<Plugin> removedPlugins) {
+  private void printInfoOnce(
+      List<String> configuredDescriptors,
+      List<Plugin> removedPlugins,
+      List<Plugin> remainingPlugins) {
     if (!propertiesProvider.isFilterInfoRequested() || !infoPrinted.compareAndSet(false, true)) {
       return;
     }
@@ -173,18 +182,27 @@ public class FilteringModelProcessor extends DefaultModelProcessor {
     logger.info(
         "maven-execution-filter-extension (-D%s):"
             .formatted(PropertiesProvider.FILTER_INFO_SYS_PROP));
-    logger.info("  filtered from this build : " + describe(removedPlugins));
+    logger.info(infoLine("filtered from this build", describe(removedPlugins)));
+    logger.info(infoLine("could still be filtered", describe(remainingPlugins)));
     logger.info(
-        "  configured to be filtered: "
-            + (configuredDescriptors.isEmpty()
+        infoLine(
+            "configured to be filtered",
+            configuredDescriptors.isEmpty()
                 ? "none (disabled)"
                 : String.join(", ", configuredDescriptors)));
     logger.info(
-        "  customize the list       : -D%s=artifactId[:groupId[:version]][,...]"
-            .formatted(PropertiesProvider.FILTER_PLUGINS_SYS_PROP));
+        infoLine(
+            "customize the list",
+            "-D%s=artifactId[:groupId[:version]][,...]"
+                .formatted(PropertiesProvider.FILTER_PLUGINS_SYS_PROP)));
     logger.info(
-        "  disable entirely         : -D%s=".formatted(PropertiesProvider.FILTER_PLUGINS_SYS_PROP));
+        infoLine(
+            "disable entirely", "-D%s=".formatted(PropertiesProvider.FILTER_PLUGINS_SYS_PROP)));
     logger.info("");
+  }
+
+  private static String infoLine(String label, String value) {
+    return "  %-25s: %s".formatted(label, value);
   }
 
   private static String describe(List<Plugin> plugins) {

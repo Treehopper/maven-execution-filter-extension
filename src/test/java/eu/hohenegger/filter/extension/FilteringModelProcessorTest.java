@@ -178,6 +178,7 @@ public class FilteringModelProcessorTest {
     var model = new Model();
     var build = new Build();
     build.addPlugin(plugin("org.apache.maven.plugins", "maven-checkstyle-plugin"));
+    build.addPlugin(plugin("org.apache.maven.plugins", "maven-surefire-plugin"));
     model.setBuild(build);
 
     modelProcessor.filter(model);
@@ -190,7 +191,14 @@ public class FilteringModelProcessorTest {
         .anyMatch(
             message ->
                 message.contains("filtered from this build")
-                    && message.contains("org.apache.maven.plugins:maven-checkstyle-plugin"));
+                    && message.contains("org.apache.maven.plugins:maven-checkstyle-plugin")
+                    && !message.contains("maven-surefire-plugin"));
+    assertThat(logger.infoMessages)
+        .anyMatch(
+            message ->
+                message.contains("could still be filtered")
+                    && message.contains("org.apache.maven.plugins:maven-surefire-plugin")
+                    && !message.contains("maven-checkstyle-plugin"));
     assertThat(logger.infoMessages)
         .anyMatch(
             message ->
