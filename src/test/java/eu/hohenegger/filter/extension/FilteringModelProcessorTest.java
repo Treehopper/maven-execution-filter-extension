@@ -21,6 +21,7 @@ package eu.hohenegger.filter.extension;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.ArrayList;
 import java.util.List;
 import org.apache.maven.model.Build;
 import org.apache.maven.model.BuildBase;
@@ -28,6 +29,7 @@ import org.apache.maven.model.Model;
 import org.apache.maven.model.Parent;
 import org.apache.maven.model.Plugin;
 import org.apache.maven.model.Profile;
+import org.codehaus.plexus.logging.Logger;
 import org.codehaus.plexus.logging.console.ConsoleLogger;
 import org.junit.jupiter.api.Test;
 
@@ -147,5 +149,149 @@ public class FilteringModelProcessorTest {
     var filteredModel = modelProcessor.filter(model);
 
     assertThat(filteredModel.getBuild().getPlugins()).hasSize(1);
+  }
+
+  @Test
+  public void doesNotPrintInfoWhenNotRequested() {
+    var logger = new CapturingLogger();
+    var modelProcessor =
+        new FilteringModelProcessor(
+            logger, propertiesProviderFor(false, "maven-checkstyle-plugin"));
+
+    var model = new Model();
+    var build = new Build();
+    build.addPlugin(plugin("org.apache.maven.plugins", "maven-checkstyle-plugin"));
+    model.setBuild(build);
+
+    modelProcessor.filter(model);
+
+    assertThat(logger.infoMessages)
+        .noneMatch(message -> message.contains("maven-execution-filter-extension"));
+  }
+
+  @Test
+  public void printsInfoOnceWhenRequested() {
+    var logger = new CapturingLogger();
+    var modelProcessor =
+        new FilteringModelProcessor(logger, propertiesProviderFor(true, "maven-checkstyle-plugin"));
+
+    var model = new Model();
+    var build = new Build();
+    build.addPlugin(plugin("org.apache.maven.plugins", "maven-checkstyle-plugin"));
+    model.setBuild(build);
+
+    modelProcessor.filter(model);
+    modelProcessor.filter(new Model());
+
+    assertThat(logger.infoMessages)
+        .filteredOn(message -> message.contains("maven-execution-filter-extension"))
+        .hasSize(1);
+    assertThat(logger.infoMessages)
+        .anyMatch(
+            message ->
+                message.contains("filtered from this build")
+                    && message.contains("org.apache.maven.plugins:maven-checkstyle-plugin"));
+    assertThat(logger.infoMessages)
+        .anyMatch(
+            message ->
+                message.contains("configured to be filtered")
+                    && message.contains("maven-checkstyle-plugin"));
+    assertThat(logger.infoMessages).anyMatch(message -> message.contains("-DfilterPlugins="));
+  }
+
+  private static PropertiesProvider propertiesProviderFor(
+      boolean filterInfoRequested, String... pluginDescriptors) {
+    return new PropertiesProvider() {
+      @Override
+      public List<String> getPluginDescriptors() {
+        return List.of(pluginDescriptors);
+      }
+
+      @Override
+      public boolean isFilterInfoRequested() {
+        return filterInfoRequested;
+      }
+    };
+  }
+
+  private static final class CapturingLogger implements Logger {
+    private final List<String> infoMessages = new ArrayList<>();
+
+    @Override
+    public void info(String message) {
+      infoMessages.add(message);
+    }
+
+    @Override
+    public void info(String message, Throwable throwable) {
+      infoMessages.add(message);
+    }
+
+    @Override
+    public boolean isInfoEnabled() {
+      return true;
+    }
+
+    @Override
+    public void debug(String message) {}
+
+    @Override
+    public void debug(String message, Throwable throwable) {}
+
+    @Override
+    public boolean isDebugEnabled() {
+      return true;
+    }
+
+    @Override
+    public void warn(String message) {}
+
+    @Override
+    public void warn(String message, Throwable throwable) {}
+
+    @Override
+    public boolean isWarnEnabled() {
+      return true;
+    }
+
+    @Override
+    public void error(String message) {}
+
+    @Override
+    public void error(String message, Throwable throwable) {}
+
+    @Override
+    public boolean isErrorEnabled() {
+      return true;
+    }
+
+    @Override
+    public void fatalError(String message) {}
+
+    @Override
+    public void fatalError(String message, Throwable throwable) {}
+
+    @Override
+    public boolean isFatalErrorEnabled() {
+      return true;
+    }
+
+    @Override
+    public int getThreshold() {
+      return Logger.LEVEL_DEBUG;
+    }
+
+    @Override
+    public void setThreshold(int threshold) {}
+
+    @Override
+    public Logger getChildLogger(String name) {
+      return this;
+    }
+
+    @Override
+    public String getName() {
+      return "capturing";
+    }
   }
 }

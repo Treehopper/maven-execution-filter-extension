@@ -19,15 +19,16 @@
  */
 package eu.hohenegger.filter.extension;
 
-import static java.util.function.Predicate.not;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 import javax.inject.Inject;
 import javax.inject.Named;
 import javax.inject.Singleton;
@@ -56,6 +57,7 @@ public class FilteringModelProcessor extends DefaultModelProcessor {
 
   private final Logger logger;
   private final PropertiesProvider propertiesProvider;
+  private final AtomicBoolean infoPrinted = new AtomicBoolean();
 
   @Inject
   public FilteringModelProcessor(Logger logger, PropertiesProvider propertiesProvider) {
@@ -63,15 +65,8 @@ public class FilteringModelProcessor extends DefaultModelProcessor {
     this.propertiesProvider = propertiesProvider;
   }
 
-  /**
-   * Re-read on every call rather than cached at construction time, so a long-lived component
-   * instance (e.g. a Maven daemon such as mvnd reusing it across builds) picks up a changed {@code
-   * filterPlugins} value on the very next build, without needing to restart.
-   */
-  private List<Plugin> currentFilteredPlugins() {
-    return propertiesProvider.getPluginDescriptors().stream()
-        .map(this::loadPluginToBeFiltered)
-        .toList();
+  private List<Plugin> parseFilteredPlugins(List<String> descriptors) {
+    return descriptors.stream().map(this::loadPluginToBeFiltered).toList();
   }
 
   private Plugin loadPluginToBeFiltered(String pluginDescriptor) {
@@ -134,27 +129,74 @@ public class FilteringModelProcessor extends DefaultModelProcessor {
   }
 
   Model filter(Model model) {
-    var filteredPlugins = currentFilteredPlugins();
-    if (filteredPlugins.isEmpty()) {
-      return model;
+    var configuredDescriptors = propertiesProvider.getPluginDescriptors();
+    var filteredPlugins = parseFilteredPlugins(configuredDescriptors);
+
+    var removedPlugins = new ArrayList<Plugin>();
+    if (!filteredPlugins.isEmpty()) {
+      logger.debug("filtering: " + model);
+      removedPlugins.addAll(filterBuild(model.getBuild(), filteredPlugins));
+      model
+          .getProfiles()
+          .forEach(
+              profile -> removedPlugins.addAll(filterBuild(profile.getBuild(), filteredPlugins)));
     }
 
-    logger.debug("filtering: " + model);
-
-    filterBuild(model.getBuild(), filteredPlugins);
-    model.getProfiles().forEach(profile -> filterBuild(profile.getBuild(), filteredPlugins));
+    printInfoOnce(configuredDescriptors, removedPlugins);
 
     return model;
   }
 
-  private void filterBuild(BuildBase build, List<Plugin> filteredPlugins) {
+  private List<Plugin> filterBuild(BuildBase build, List<Plugin> filteredPlugins) {
     if (build == null) {
+      return List.of();
+    }
+    var partitioned =
+        build.getPlugins().stream()
+            .collect(
+                Collectors.partitioningBy(plugin -> isFilteredPlugin(plugin, filteredPlugins)));
+    build.setPlugins(partitioned.get(false));
+    return partitioned.get(true);
+  }
+
+  /**
+   * Prints, once per component lifetime (i.e. once per build for plain {@code mvn}; under a reused
+   * daemon such as mvnd, only for the first build it serves), a summary of what this extension
+   * actually removed from the build plus a short usage reminder - gated behind {@value
+   * PropertiesProvider#FILTER_INFO_SYS_PROP} so it stays silent otherwise.
+   */
+  private void printInfoOnce(List<String> configuredDescriptors, List<Plugin> removedPlugins) {
+    if (!propertiesProvider.isFilterInfoRequested() || !infoPrinted.compareAndSet(false, true)) {
       return;
     }
-    build.setPlugins(
-        build.getPlugins().stream()
-            .filter(not(plugin -> isFilteredPlugin(plugin, filteredPlugins)))
-            .toList());
+    logger.info("");
+    logger.info(
+        "maven-execution-filter-extension (-D%s):"
+            .formatted(PropertiesProvider.FILTER_INFO_SYS_PROP));
+    logger.info("  filtered from this build : " + describe(removedPlugins));
+    logger.info(
+        "  configured to be filtered: "
+            + (configuredDescriptors.isEmpty()
+                ? "none (disabled)"
+                : String.join(", ", configuredDescriptors)));
+    logger.info(
+        "  customize the list       : -D%s=artifactId[:groupId[:version]][,...]"
+            .formatted(PropertiesProvider.FILTER_PLUGINS_SYS_PROP));
+    logger.info(
+        "  disable entirely         : -D%s=".formatted(PropertiesProvider.FILTER_PLUGINS_SYS_PROP));
+    logger.info("");
+  }
+
+  private static String describe(List<Plugin> plugins) {
+    if (plugins.isEmpty()) {
+      return "none";
+    }
+    return plugins.stream()
+        .map(
+            plugin ->
+                "%s:%s:%s"
+                    .formatted(plugin.getGroupId(), plugin.getArtifactId(), plugin.getVersion()))
+        .collect(Collectors.joining(", "));
   }
 
   boolean isFilteredPlugin(Plugin plugin, List<Plugin> filteredPlugins) {

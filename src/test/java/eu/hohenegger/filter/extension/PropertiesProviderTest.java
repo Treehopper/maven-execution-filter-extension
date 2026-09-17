@@ -19,6 +19,7 @@
  */
 package eu.hohenegger.filter.extension;
 
+import static eu.hohenegger.filter.extension.PropertiesProvider.FILTER_INFO_SYS_PROP;
 import static eu.hohenegger.filter.extension.PropertiesProvider.FILTER_PLUGINS_SYS_PROP;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -30,8 +31,9 @@ public class PropertiesProviderTest {
   private final PropertiesProvider propertiesProvider = new PropertiesProvider();
 
   @AfterEach
-  public void clearSystemProperty() {
+  public void clearSystemProperties() {
     System.getProperties().remove(FILTER_PLUGINS_SYS_PROP);
+    System.getProperties().remove(FILTER_INFO_SYS_PROP);
   }
 
   @Test
@@ -63,5 +65,24 @@ public class PropertiesProviderTest {
     System.setProperty(FILTER_PLUGINS_SYS_PROP, "  ");
 
     assertThat(propertiesProvider.getPluginDescriptors()).isEmpty();
+  }
+
+  @Test
+  public void filterInfoIsNotRequestedByDefault() {
+    assertThat(propertiesProvider.isFilterInfoRequested()).isFalse();
+  }
+
+  @Test
+  public void filterInfoIsRequestedWhenFlagIsBare() {
+    System.setProperty(FILTER_INFO_SYS_PROP, "true");
+
+    assertThat(propertiesProvider.isFilterInfoRequested()).isTrue();
+  }
+
+  @Test
+  public void filterInfoIsNotRequestedWhenExplicitlyFalse() {
+    System.setProperty(FILTER_INFO_SYS_PROP, "false");
+
+    assertThat(propertiesProvider.isFilterInfoRequested()).isFalse();
   }
 }

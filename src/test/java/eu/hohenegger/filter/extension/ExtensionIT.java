@@ -21,6 +21,7 @@ package eu.hohenegger.filter.extension;
 
 import static com.soebes.itf.extension.assertj.MavenITAssertions.assertThat;
 import static com.soebes.itf.jupiter.extension.MavenCLIOptions.*;
+import static eu.hohenegger.filter.extension.PropertiesProvider.FILTER_INFO_SYS_PROP;
 import static eu.hohenegger.filter.extension.PropertiesProvider.FILTER_PLUGINS_SYS_PROP;
 
 import com.soebes.itf.jupiter.extension.MavenJupiterExtension;
@@ -95,5 +96,25 @@ public class ExtensionIT {
         .out()
         .info()
         .contains("Plugin [org.apache.maven.plugins:maven-checkstyle-plugin:3.1.2] filtered");
+  }
+
+  @MavenTest
+  @MavenOption(NO_TRANSFER_PROGRESS)
+  @SystemProperty(
+      value = FILTER_PLUGINS_SYS_PROP,
+      content = "maven-checkstyle-plugin:org.apache.maven.plugins")
+  @SystemProperty(value = FILTER_INFO_SYS_PROP, content = "true")
+  void filter_info(MavenExecutionResult result) {
+    assertThat(result).isSuccessful();
+    assertThat(result)
+        .out()
+        .info()
+        .contains("maven-execution-filter-extension (-DfilterInfo):")
+        .contains(
+            "  filtered from this build : org.apache.maven.plugins:maven-checkstyle-plugin:3.1.2")
+        .contains("  configured to be filtered: maven-checkstyle-plugin:org.apache.maven.plugins")
+        .contains(
+            "  customize the list       : -DfilterPlugins=artifactId[:groupId[:version]][,...]")
+        .contains("  disable entirely         : -DfilterPlugins=");
   }
 }

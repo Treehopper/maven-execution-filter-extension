@@ -39,3 +39,9 @@ too, and fails for the same reason as above):
 ```
 mvn -DfilterPlugins=maven-pmd-plugin verify
 ```
+
+**See what's being filtered** - prints a one-time summary of what was actually removed, what's
+configured, and how to change it:
+```
+mvn -DfilterInfo verify
+```

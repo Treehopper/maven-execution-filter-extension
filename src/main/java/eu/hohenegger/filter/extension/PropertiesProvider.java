@@ -31,6 +31,13 @@ public class PropertiesProvider {
   public static final String FILTER_PLUGINS_SYS_PROP = "filterPlugins";
 
   /**
+   * Short, easy-to-remember opt-in flag: prints, once at the start of the build, which plugins were
+   * actually filtered, the full configured list, and a short reminder of how to customize or
+   * disable it (e.g. {@code -DfilterInfo}).
+   */
+  public static final String FILTER_INFO_SYS_PROP = "filterInfo";
+
+  /**
    * Widely-used checker/reporting plugins that are removed from the build by default, so that a
    * plain install of this extension already speeds up local builds without any further
    * configuration.
@@ -64,5 +71,10 @@ public class PropertiesProvider {
         .map(String::trim)
         .filter(not(String::isEmpty))
         .toList();
+  }
+
+  /** Whether the {@value #FILTER_INFO_SYS_PROP} flag is set for this build. */
+  public boolean isFilterInfoRequested() {
+    return Boolean.parseBoolean(System.getProperty(FILTER_INFO_SYS_PROP, "false"));
   }
 }

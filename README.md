@@ -65,6 +65,21 @@ Setting this property **fully replaces** the default list (it is not merged with
 and `version` are optional: if omitted, the plugin is matched on the remaining segments alone (e.g.
 `maven-checkstyle-plugin` matches that artifactId regardless of groupId or version).
 
+## Seeing what's being filtered
+Add `-DfilterInfo` to any build to print, once at the start, exactly which plugins were removed
+from that build, the full list currently configured to be filtered, and a short reminder of how to
+customize or disable it:
+```
+mvn -DfilterInfo verify
+```
+```
+[INFO] maven-execution-filter-extension (-DfilterInfo):
+[INFO]   filtered from this build : org.apache.maven.plugins:maven-checkstyle-plugin:3.1.2
+[INFO]   configured to be filtered: maven-checkstyle-plugin:org.apache.maven.plugins, ...
+[INFO]   customize the list       : -DfilterPlugins=artifactId[:groupId[:version]][,...]
+[INFO]   disable entirely         : -DfilterPlugins=
+```
+
 ## Disabling the extension (e.g. for CI)
 Since `.mvn/jvm.config` is typically committed to the repository, it applies to every build,
 including your CI pipeline. To let CI run with the full, unfiltered set of plugins, override the
