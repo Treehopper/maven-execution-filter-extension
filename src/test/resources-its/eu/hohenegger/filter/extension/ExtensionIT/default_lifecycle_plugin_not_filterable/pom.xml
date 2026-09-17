@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>foo</groupId>
+    <artifactId>bar</artifactId>
+    <version>@project.version@</version>
+    <packaging>jar</packaging>
+
+    <!--
+     ! Deliberately declares no <build><plugins> at all: maven-surefire-plugin is bound purely
+     ! through Maven's default lifecycle mapping for jar packaging, so it never appears in the raw
+     ! model this extension's ModelProcessor reads - filterPlugins cannot remove it. JUnit 4 (not 5)
+     ! is used here specifically so the test runs under whatever surefire version Maven's own
+     ! default lifecycle binding implies, without needing an explicit, filterable <plugin> entry
+     ! just to pin a JUnit-5-capable version.
+    -->
+    <dependencies>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.13.2</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>

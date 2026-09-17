@@ -118,4 +118,23 @@ public class ExtensionIT {
             "  customize the list       : -DfilterPlugins=artifactId[:groupId[:version]][,...]")
         .contains("  disable entirely         : -DfilterPlugins=");
   }
+
+  /**
+   * maven-surefire-plugin is bound purely via Maven's default lifecycle mapping for jar packaging
+   * in this fixture (no explicit &lt;plugin&gt; declaration at all), so it never appears in the raw
+   * model this extension's ModelProcessor reads - filterPlugins listing it has no effect. See the
+   * "What can and can't be filtered" section of the README.
+   */
+  @MavenTest
+  @MavenOption(NO_TRANSFER_PROGRESS)
+  @SystemProperty(
+      value = FILTER_PLUGINS_SYS_PROP,
+      content = "maven-surefire-plugin:org.apache.maven.plugins")
+  void default_lifecycle_plugin_not_filterable(MavenExecutionResult result) {
+    assertThat(result).isSuccessful();
+    assertThat(result)
+        .out()
+        .info()
+        .anyMatch(line -> line.matches("--- surefire:.*:test \\(default-test\\) @ bar ---"));
+  }
 }

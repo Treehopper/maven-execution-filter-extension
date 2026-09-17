@@ -63,7 +63,20 @@ list of `artifactId[:groupId[:version]]` descriptors, e.g. in your `${baseDir}/.
 ```
 Setting this property **fully replaces** the default list (it is not merged with it). `groupId`
 and `version` are optional: if omitted, the plugin is matched on the remaining segments alone (e.g.
-`maven-checkstyle-plugin` matches that artifactId regardless of groupId or version).
+`maven-checkstyle-plugin` matches that artifactId regardless of groupId or version). The
+`artifactId` must match exactly - `surefire` will not match `maven-surefire-plugin`.
+
+### What can and can't be filtered
+This only works for plugins **explicitly declared** in `<build><plugins>` - directly, inherited
+from a parent POM, or inside an active `<profile>` - which is true of `maven-checkstyle-plugin`,
+`maven-pmd-plugin` and the rest of the default list, since they only do anything once explicitly
+bound to a phase. It does **not** work for plugins bound purely through Maven's own default
+lifecycle mapping for your packaging type (e.g. `maven-surefire-plugin`, `maven-compiler-plugin`,
+`maven-resources-plugin`, `maven-jar-plugin`, `maven-install-plugin`, `maven-deploy-plugin` for
+`jar` packaging), since those never appear in `<build><plugins>` at all unless a project
+re-declares them for configuration purposes - they're injected later, after this extension's
+model-reading hook has already run, so there's nothing in the raw model to remove. To skip test
+execution, use Maven's own `-DskipTests` (or `-Dmaven.test.skip=true`) instead.
 
 ## Seeing what's being filtered
 Add `-DfilterInfo` to any build to print, once at the start: exactly which plugins were removed
