@@ -1,4 +1,8 @@
 # Maven Execution Filter Extension
+[![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/Treehopper/maven-execution-filter-extension)
+[![Jitpack](https://jitpack.io/v/Treehopper/maven-execution-filter-extension.svg)](https://jitpack.io/#Treehopper/maven-execution-filter-extension)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+
 A Maven Extension to remove (not skip) plugins from your build at runtime w/o modifying pom-files, resulting in faster builds, smaller logs and the ability to temporarily ignore minor issues.
 The intended purpose of this extension is to improve the developer UX when working with large builds, which often use parent-poms optimized for CI.
 
@@ -153,14 +157,3 @@ JitPack under `mvnd` is a separate matter - see the note on core extension resol
 Building this project requires JDK 17+ (the compiled classes still target Java 17 - see
 `java.version` in `pom.xml`).
 
-[![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/Treehopper/maven-execution-filter-extension)
-
-[![CircleCI](https://circleci.com/gh/Treehopper/maven-execution-filter-extension/tree/main.svg?style=svg)](https://circleci.com/gh/Treehopper/maven-execution-filter-extension/tree/main)
-
-[![Total alerts](https://img.shields.io/lgtm/alerts/g/Treehopper/maven-execution-filter-extension.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/Treehopper/maven-execution-filter-extension/alerts/)
-
-[![Language grade: Java](https://img.shields.io/lgtm/grade/java/g/Treehopper/maven-execution-filter-extension.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/Treehopper/maven-execution-filter-extension/context:java)
-
-[![Jitpack](https://jitpack.io/v/Treehopper/maven-execution-filter-extension.svg)](https://jitpack.io/#Treehopper/maven-execution-filter-extension)
-
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
