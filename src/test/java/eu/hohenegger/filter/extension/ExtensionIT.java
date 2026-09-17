@@ -137,4 +137,19 @@ public class ExtensionIT {
         .info()
         .anyMatch(line -> line.matches("--- surefire:.*:test \\(default-test\\) @ bar ---"));
   }
+
+  /**
+   * No {@value #FILTER_PLUGINS_SYS_PROP} system property at all here - the fixture ships its own
+   * pre-existing {@code .mvn/filterPlugins.txt}, simulating a developer having already edited the
+   * file created on a previous run. Proves the persisted-file path works without any -D flag.
+   */
+  @MavenTest
+  @MavenOption(NO_TRANSFER_PROGRESS)
+  void persisted_config_file(MavenExecutionResult result) {
+    assertThat(result).isSuccessful();
+    assertThat(result)
+        .out()
+        .info()
+        .contains("Plugin [org.apache.maven.plugins:maven-checkstyle-plugin:3.1.2] filtered");
+  }
 }

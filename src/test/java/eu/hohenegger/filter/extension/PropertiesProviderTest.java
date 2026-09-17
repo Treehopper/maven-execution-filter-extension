@@ -19,27 +19,100 @@
  */
 package eu.hohenegger.filter.extension;
 
+import static eu.hohenegger.filter.extension.PropertiesProvider.CONFIG_FILE_NAME;
 import static eu.hohenegger.filter.extension.PropertiesProvider.FILTER_INFO_SYS_PROP;
 import static eu.hohenegger.filter.extension.PropertiesProvider.FILTER_PLUGINS_SYS_PROP;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 public class PropertiesProviderTest {
 
-  private final PropertiesProvider propertiesProvider = new PropertiesProvider();
+  private static final String MULTI_MODULE_PROJECT_DIRECTORY_SYS_PROP =
+      "maven.multiModuleProjectDirectory";
+
+  @TempDir private Path projectDirectory;
+
+  private String originalMultiModuleProjectDirectory;
+  private CapturingLogger logger;
+  private PropertiesProvider propertiesProvider;
+  private Path configFile;
+
+  @BeforeEach
+  public void setUp() throws IOException {
+    originalMultiModuleProjectDirectory =
+        System.getProperty(MULTI_MODULE_PROJECT_DIRECTORY_SYS_PROP);
+    System.setProperty(MULTI_MODULE_PROJECT_DIRECTORY_SYS_PROP, projectDirectory.toString());
+
+    // .mvn/ always already exists in a real project by the time this extension runs, since
+    // extensions.xml lives there too.
+    Files.createDirectories(projectDirectory.resolve(".mvn"));
+    configFile = projectDirectory.resolve(".mvn").resolve(CONFIG_FILE_NAME);
+
+    logger = new CapturingLogger();
+    propertiesProvider = new PropertiesProvider(logger);
+  }
 
   @AfterEach
-  public void clearSystemProperties() {
+  public void tearDown() {
     System.getProperties().remove(FILTER_PLUGINS_SYS_PROP);
     System.getProperties().remove(FILTER_INFO_SYS_PROP);
+    if (originalMultiModuleProjectDirectory == null) {
+      System.getProperties().remove(MULTI_MODULE_PROJECT_DIRECTORY_SYS_PROP);
+    } else {
+      System.setProperty(
+          MULTI_MODULE_PROJECT_DIRECTORY_SYS_PROP, originalMultiModuleProjectDirectory);
+    }
   }
 
   @Test
-  public void fallsBackToDefaultsWhenSystemPropertyIsAbsent() {
+  public void createsConfigFileWithDefaultsOnFirstUse() {
+    assertThat(configFile).doesNotExist();
+
     assertThat(propertiesProvider.getPluginDescriptors())
         .isEqualTo(PropertiesProvider.DEFAULT_FILTERED_PLUGIN_DESCRIPTORS);
+
+    assertThat(configFile).exists();
+    assertThat(logger.infoMessages).anyMatch(message -> message.contains(CONFIG_FILE_NAME));
+  }
+
+  @Test
+  public void reusesAnAlreadyExistingConfigFile() throws IOException {
+    Files.writeString(configFile, "maven-checkstyle-plugin:org.apache.maven.plugins\n");
+
+    assertThat(propertiesProvider.getPluginDescriptors())
+        .containsExactly("maven-checkstyle-plugin:org.apache.maven.plugins");
+  }
+
+  @Test
+  public void ignoresBlankLinesAndCommentsInConfigFile() throws IOException {
+    Files.writeString(
+        configFile,
+        """
+        # a comment
+
+        maven-checkstyle-plugin:org.apache.maven.plugins
+
+        maven-pmd-plugin:org.apache.maven.plugins
+        """);
+
+    assertThat(propertiesProvider.getPluginDescriptors())
+        .containsExactly(
+            "maven-checkstyle-plugin:org.apache.maven.plugins",
+            "maven-pmd-plugin:org.apache.maven.plugins");
+  }
+
+  @Test
+  public void emptyConfigFileDisablesFiltering() throws IOException {
+    Files.writeString(configFile, "# nothing configured here\n");
+
+    assertThat(propertiesProvider.getPluginDescriptors()).isEmpty();
   }
 
   @Test
@@ -53,11 +126,12 @@ public class PropertiesProviderTest {
   }
 
   @Test
-  public void usesConfiguredCommaSeparatedList() {
+  public void systemPropertyOverridesConfigFileWithoutTouchingIt() {
     System.setProperty(FILTER_PLUGINS_SYS_PROP, "maven-checkstyle-plugin, maven-pmd-plugin");
 
     assertThat(propertiesProvider.getPluginDescriptors())
         .containsExactly("maven-checkstyle-plugin", "maven-pmd-plugin");
+    assertThat(configFile).doesNotExist();
   }
 
   @Test

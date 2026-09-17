@@ -23,19 +23,26 @@ JitPack, add it as a repository in your own `~/.m2/settings.xml`; a `<pluginRepo
 
 **Default behaviour.** `maven-checkstyle-plugin` is part of the extension's built-in default list,
 so it is removed from the build before Maven ever downloads or runs it - the build succeeds, and
-there is no checkstyle output at all:
+there is no checkstyle output at all. This also creates `.mvn/filterPlugins.txt` here, populated
+with that default list (not committed in this repo, so you get to see it being created fresh):
 ```
 mvn verify
+cat .mvn/filterPlugins.txt
 ```
 
-**Disable filtering** to see the build your CI pipeline would actually run - checkstyle now
-executes and fails on the star import:
+**Edit the persisted file** to change what's filtered from now on, no flags needed. Delete (or
+comment out with `#`) the `maven-checkstyle-plugin` line in `.mvn/filterPlugins.txt`, then run
+`mvn verify` again - checkstyle now runs and fails on the star import. This is the same file a real
+project would commit so the whole team shares it.
+
+**Disable filtering for one build** without touching the file, to see the build your CI pipeline
+would actually run:
 ```
 mvn -DfilterPlugins= verify
 ```
 
-**Filter something else instead** (this fully replaces the default list, so checkstyle now runs
-too, and fails for the same reason as above):
+**Filter something else instead for one build** (this fully replaces the file's list for that
+build only, so checkstyle now runs too, and fails for the same reason as above):
 ```
 mvn -DfilterPlugins=maven-pmd-plugin verify
 ```

@@ -30,6 +30,10 @@ build is mostly wasted time. `maven-source-plugin` and `maven-javadoc-plugin` on
 publishing a release, so there is no reason to build sources/javadoc jars on every local build
 either.
 
+The first time the extension runs in a project, it writes this default list to `.mvn/filterPlugins.txt`
+(see [Customizing the filtered plugins](#customizing-the-filtered-plugins)) - edit that file to
+change it from then on.
+
 # Example Usage
 In your `${baseDir}/.mvn/extensions.xml` (requires Maven 3.3.1):
 ```xml
@@ -56,15 +60,43 @@ Once resolved, that's it - the [default plugin list](#default-behaviour) above i
 of every local build.
 
 ## Customizing the filtered plugins
-To filter a different set of plugins, set the `filterPlugins` system property to a comma-separated
-list of `artifactId[:groupId[:version]]` descriptors, e.g. in your `${baseDir}/.mvn/jvm.config`:
+The persisted, user-editable way: `.mvn/filterPlugins.txt`. The first time the extension runs in a
+project (i.e. that file doesn't exist yet), it's created with the [default list](#default-behaviour)
+above, one `artifactId[:groupId[:version]]` descriptor per line:
 ```
--DfilterPlugins=maven-checkstyle-plugin:org.apache.maven.plugins,maven-pmd-plugin:org.apache.maven.plugins,spotbugs-maven-plugin:com.github.spotbugs,license-maven-plugin:org.codehaus.mojo,jacoco-maven-plugin:org.jacoco,arch-unit-maven-plugin:com.societegenerale.commons,sortpom-maven-plugin:com.github.ekryd.sortpom,maven-source-plugin:org.apache.maven.plugins,maven-javadoc-plugin:org.apache.maven.plugins
+# Plugins filtered from local builds by maven-execution-filter-extension.
+#
+# One artifactId[:groupId[:version]] descriptor per line. Blank lines and lines starting
+# with '#' are ignored. Remove a line to stop filtering that plugin locally; add a line to
+# filter another. Commit this file so your team shares the same local dev experience.
+#
+# To override this file for a single build without editing it:
+#   -DfilterPlugins=artifactId[:groupId[:version]][,...]
+# To disable filtering entirely for one build:
+#   -DfilterPlugins=
+maven-checkstyle-plugin:org.apache.maven.plugins
+maven-pmd-plugin:org.apache.maven.plugins
+...
 ```
-Setting this property **fully replaces** the default list (it is not merged with it). `groupId`
-and `version` are optional: if omitted, the plugin is matched on the remaining segments alone (e.g.
-`maven-checkstyle-plugin` matches that artifactId regardless of groupId or version). The
-`artifactId` must match exactly - `surefire` will not match `maven-surefire-plugin`.
+From then on, it's yours: add, remove, or comment out (`#`) lines to change what's filtered on the
+next build, no flags needed. Commit it like you would `.mvn/extensions.xml` or `.mvn/jvm.config`,
+so the whole team gets the same local dev experience rather than everyone tuning their own copy.
+Emptying it out entirely (or commenting out every line) disables filtering, same as the blank
+system property value below.
+
+The one-off, invocation-only way: set the `filterPlugins` system property to a comma-separated list
+of the same descriptor syntax, e.g.:
+```
+mvn -DfilterPlugins=maven-checkstyle-plugin:org.apache.maven.plugins,maven-pmd-plugin:org.apache.maven.plugins verify
+```
+Setting this property **fully replaces** the file for that build only (it is not merged with it,
+and the file itself is left untouched - not even created if it didn't exist yet). This is the
+right tool for a single ad-hoc build; for anything you want to keep, edit the file instead.
+
+Either way, `groupId` and `version` are optional: if omitted, the plugin is matched on the
+remaining segments alone (e.g. `maven-checkstyle-plugin` matches that artifactId regardless of
+groupId or version). The `artifactId` must match exactly - `surefire` will not match
+`maven-surefire-plugin`.
 
 ### What can and can't be filtered
 This only works for plugins **explicitly declared** in `<build><plugins>` - directly, inherited
@@ -96,18 +128,19 @@ mvn -DfilterInfo verify
 ```
 
 ## Disabling the extension (e.g. for CI)
-Since `.mvn/jvm.config` is typically committed to the repository, it applies to every build,
-including your CI pipeline. To let CI run with the full, unfiltered set of plugins, override the
-property with a blank value on the command line, which takes precedence over `jvm.config`:
+Since `.mvn/filterPlugins.txt` (like `.mvn/jvm.config`) is typically committed to the repository,
+it applies to every build, including your CI pipeline. To let CI run with the full, unfiltered set
+of plugins without touching either file, override with a blank value on the command line:
 ```
 mvn -DfilterPlugins= verify
 ```
 
 ## Compatibility with mvnd (the Maven Daemon)
-The extension re-reads `filterPlugins` on every build rather than caching it once, so it correctly
-picks up a different value on the next `mvnd` invocation even when the daemon reuses the same
-warm JVM (and thus the same extension component instance) - no need to run `mvnd --stop` in
-between. `-DfilterInfo`'s once-per-build summary (see above) is also safe under daemon reuse: each
+The extension re-reads `filterPlugins` and `.mvn/filterPlugins.txt` on every build rather than
+caching either once, so it correctly picks up a different value - or a just-saved edit to the file
+- on the next `mvnd` invocation even when the daemon reuses the same warm JVM (and thus the same
+extension component instance) - no need to run `mvnd --stop` in between. `-DfilterInfo`'s
+once-per-build summary (see above) is also safe under daemon reuse: each
 `mvnd`-served build runs on its own fresh thread even though the component instance is shared, and
 the "print once" guard is thread-scoped rather than shared, so it reliably prints again on the next
 build rather than only the first one the daemon ever served. (Resolving the extension itself from
