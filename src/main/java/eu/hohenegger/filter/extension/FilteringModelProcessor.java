@@ -27,7 +27,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -57,7 +56,15 @@ public class FilteringModelProcessor extends DefaultModelProcessor {
 
   private final Logger logger;
   private final PropertiesProvider propertiesProvider;
-  private final AtomicBoolean infoPrinted = new AtomicBoolean();
+
+  /**
+   * Thread-scoped rather than a single shared flag: under a Maven daemon (mvnd) that reuses this
+   * singleton component across builds, each build runs on its own fresh thread even though the
+   * component instance stays the same (verified empirically - the daemon reuses the component but
+   * not the thread), so this still resets per build there while also deduplicating the several
+   * redundant re-reads of the same project's model that happen within one build.
+   */
+  private final ThreadLocal<Boolean> infoPrinted = ThreadLocal.withInitial(() -> false);
 
   @Inject
   public FilteringModelProcessor(Logger logger, PropertiesProvider propertiesProvider) {
@@ -165,19 +172,19 @@ public class FilteringModelProcessor extends DefaultModelProcessor {
   }
 
   /**
-   * Prints, once per component lifetime (i.e. once per build for plain {@code mvn}; under a reused
-   * daemon such as mvnd, only for the first build it serves), a summary of what this extension
-   * actually removed from the build, which of the plugins still declared in it could be added to
-   * the filter too, plus a short usage reminder - gated behind {@value
+   * Prints, once per build (see {@link #infoPrinted}), a summary of what this extension actually
+   * removed from the build, which of the plugins still declared in it could be added to the filter
+   * too, plus a short usage reminder - gated behind {@value
    * PropertiesProvider#FILTER_INFO_SYS_PROP} so it stays silent otherwise.
    */
   private void printInfoOnce(
       List<String> configuredDescriptors,
       List<Plugin> removedPlugins,
       List<Plugin> remainingPlugins) {
-    if (!propertiesProvider.isFilterInfoRequested() || !infoPrinted.compareAndSet(false, true)) {
+    if (!propertiesProvider.isFilterInfoRequested() || infoPrinted.get()) {
       return;
     }
+    infoPrinted.set(true);
     logger.info("");
     logger.info(
         "maven-execution-filter-extension (-D%s):"

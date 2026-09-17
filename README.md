@@ -94,8 +94,11 @@ mvn -DfilterPlugins= verify
 The extension re-reads `filterPlugins` on every build rather than caching it once, so it correctly
 picks up a different value on the next `mvnd` invocation even when the daemon reuses the same
 warm JVM (and thus the same extension component instance) - no need to run `mvnd --stop` in
-between. (Resolving the extension itself from JitPack under `mvnd` is a separate matter - see the
-note on core extension resolution above.)
+between. `-DfilterInfo`'s once-per-build summary (see above) is also safe under daemon reuse: each
+`mvnd`-served build runs on its own fresh thread even though the component instance is shared, and
+the "print once" guard is thread-scoped rather than shared, so it reliably prints again on the next
+build rather than only the first one the daemon ever served. (Resolving the extension itself from
+JitPack under `mvnd` is a separate matter - see the note on core extension resolution above.)
 
 # Development
 Building this project requires JDK 17+ (the compiled classes still target Java 17 - see
