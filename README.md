@@ -156,3 +156,15 @@ JitPack under `mvnd` is a separate matter - see the note on core extension resol
 Building this project requires JDK 17+ (the compiled classes still target Java 17 - see
 `java.version` in `pom.xml`).
 
+## Code quality and coverage (Codacy)
+`.github/workflows/ci.yml` builds and tests every push/PR, generates a JaCoCo coverage report
+(unit tests only - the integration tests fork entirely separate `mvn` processes JaCoCo's agent
+doesn't reach), and uploads it to Codacy. To finish wiring this up:
+1. On [codacy.com](https://www.codacy.com), sign in with GitHub and add this repository - Codacy
+   then analyzes code quality on its own, no CI changes needed for that part.
+2. In the repo's Codacy dashboard, go to Settings -> Integrations -> Project API and copy the
+   project token, then add it as a `CODACY_PROJECT_TOKEN` secret in this repo's GitHub Settings ->
+   Secrets and variables -> Actions (coverage upload silently skips itself until this exists).
+3. From Settings -> Badges in the same dashboard, copy the quality and coverage badge markdown and
+   add it to the top of this README, next to the existing badges.
+

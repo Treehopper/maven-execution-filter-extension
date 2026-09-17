@@ -154,6 +154,30 @@
         </executions>
       </plugin>
       <plugin>
+        <!--
+         ! Generates target/site/jacoco/jacoco.xml from the unit test run, uploaded to Codacy by
+         ! .github/workflows/ci.yml. Only covers surefire (unit tests): the integration tests fork
+         ! entirely separate `mvn` processes via itf-maven-plugin, which this agent doesn't reach.
+        -->
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <version>0.8.15</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>prepare-agent</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>report</id>
+            <goals>
+              <goal>report</goal>
+            </goals>
+            <phase>test</phase>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>license-maven-plugin</artifactId>
         <version>2.7.1</version>
