@@ -84,22 +84,21 @@ public class PropertiesProviderTest {
 
   @Test
   public void reusesAnAlreadyExistingConfigFile() throws IOException {
-    Files.writeString(configFile, "maven-checkstyle-plugin:org.apache.maven.plugins\n");
+    Files.writeString(
+        configFile, "filterPlugins=maven-checkstyle-plugin:org.apache.maven.plugins\n");
 
     assertThat(propertiesProvider.getPluginDescriptors())
         .containsExactly("maven-checkstyle-plugin:org.apache.maven.plugins");
   }
 
   @Test
-  public void ignoresBlankLinesAndCommentsInConfigFile() throws IOException {
+  public void supportsCommentsAndLineContinuationInConfigFile() throws IOException {
     Files.writeString(
         configFile,
         """
-        # a comment
-
-        maven-checkstyle-plugin:org.apache.maven.plugins
-
-        maven-pmd-plugin:org.apache.maven.plugins
+        # a hand-edited comment above the property, like the generated header
+        filterPlugins=maven-checkstyle-plugin:org.apache.maven.plugins,\\
+          maven-pmd-plugin:org.apache.maven.plugins
         """);
 
     assertThat(propertiesProvider.getPluginDescriptors())
@@ -109,8 +108,15 @@ public class PropertiesProviderTest {
   }
 
   @Test
-  public void emptyConfigFileDisablesFiltering() throws IOException {
+  public void missingKeyInConfigFileDisablesFiltering() throws IOException {
     Files.writeString(configFile, "# nothing configured here\n");
+
+    assertThat(propertiesProvider.getPluginDescriptors()).isEmpty();
+  }
+
+  @Test
+  public void blankValueInConfigFileDisablesFiltering() throws IOException {
+    Files.writeString(configFile, "filterPlugins=\n");
 
     assertThat(propertiesProvider.getPluginDescriptors()).isEmpty();
   }

@@ -23,15 +23,15 @@ JitPack, add it as a repository in your own `~/.m2/settings.xml`; a `<pluginRepo
 
 **Default behaviour.** `maven-checkstyle-plugin` is part of the extension's built-in default list,
 so it is removed from the build before Maven ever downloads or runs it - the build succeeds, and
-there is no checkstyle output at all. This also creates `.mvn/filterPlugins.txt` here, populated
+there is no checkstyle output at all. This also creates `.mvn/filterPlugins.properties` here, populated
 with that default list (not committed in this repo, so you get to see it being created fresh):
 ```
 mvn verify
-cat .mvn/filterPlugins.txt
+cat .mvn/filterPlugins.properties
 ```
 
 **Edit the persisted file** to change what's filtered from now on, no flags needed. Delete (or
-comment out with `#`) the `maven-checkstyle-plugin` line in `.mvn/filterPlugins.txt`, then run
+comment out with `#`) the `maven-checkstyle-plugin` line in `.mvn/filterPlugins.properties`, then run
 `mvn verify` again - checkstyle now runs and fails on the star import. This is the same file a real
 project would commit so the whole team shares it.
 

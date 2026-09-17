@@ -134,6 +134,14 @@
         <groupId>com.soebes.itf.jupiter.extension</groupId>
         <artifactId>itf-maven-plugin</artifactId>
         <version>0.13.1</version>
+        <configuration>
+          <!--
+           ! Same reasoning as maven-resources-plugin below: this goal filters
+           ! src/test/resources-its/**/*.properties (a fixture for the persisted
+           ! filterPlugins.properties config file) with its own, separate encoding parameter.
+          -->
+          <propertiesEncoding>UTF-8</propertiesEncoding>
+        </configuration>
         <executions>
           <execution>
             <id>installing</id>
@@ -212,6 +220,19 @@
            ! prefix can no longer be auto-computed. Value is irrelevant since no goals exist.
           -->
           <goalPrefix>execution-filter</goalPrefix>
+        </configuration>
+      </plugin>
+      <plugin>
+        <!--
+         ! Explicit propertiesEncoding avoids a warning from filtering
+         ! src/test/resources-its/**/*.properties (a fixture for the persisted filterPlugins.properties
+         ! config file) without it.
+        -->
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-resources-plugin</artifactId>
+        <version>3.4.0</version>
+        <configuration>
+          <propertiesEncoding>UTF-8</propertiesEncoding>
         </configuration>
       </plugin>
       <plugin>

@@ -30,7 +30,7 @@ build is mostly wasted time. `maven-source-plugin` and `maven-javadoc-plugin` on
 publishing a release, so there is no reason to build sources/javadoc jars on every local build
 either.
 
-The first time the extension runs in a project, it writes this default list to `.mvn/filterPlugins.txt`
+The first time the extension runs in a project, it writes this default list to `.mvn/filterPlugins.properties`
 (see [Customizing the filtered plugins](#customizing-the-filtered-plugins)) - edit that file to
 change it from then on.
 
@@ -60,29 +60,32 @@ Once resolved, that's it - the [default plugin list](#default-behaviour) above i
 of every local build.
 
 ## Customizing the filtered plugins
-The persisted, user-editable way: `.mvn/filterPlugins.txt`. The first time the extension runs in a
-project (i.e. that file doesn't exist yet), it's created with the [default list](#default-behaviour)
-above, one `artifactId[:groupId[:version]]` descriptor per line:
-```
+The persisted, user-editable way: `.mvn/filterPlugins.properties`, a standard `.properties` file
+with a single `filterPlugins` key - same name and comma-separated syntax as the system property
+below, just persisted. The first time the extension runs in a project (i.e. that file doesn't
+exist yet), it's created with the [default list](#default-behaviour) above:
+```properties
 # Plugins filtered from local builds by maven-execution-filter-extension.
 #
-# One artifactId[:groupId[:version]] descriptor per line. Blank lines and lines starting
-# with '#' are ignored. Remove a line to stop filtering that plugin locally; add a line to
-# filter another. Commit this file so your team shares the same local dev experience.
+# Comma-separated artifactId[:groupId[:version]] descriptors, one per continuation line
+# below for readability - keep the trailing '\' on every line except the last. Add or
+# remove a line to change what's filtered locally; clear the value entirely
+# (filterPlugins=) to disable filtering. Commit this file so your team shares the same
+# local dev experience.
 #
 # To override this file for a single build without editing it:
 #   -DfilterPlugins=artifactId[:groupId[:version]][,...]
-# To disable filtering entirely for one build:
+# To disable filtering entirely for one build without editing this file:
 #   -DfilterPlugins=
-maven-checkstyle-plugin:org.apache.maven.plugins
-maven-pmd-plugin:org.apache.maven.plugins
-...
+filterPlugins=maven-checkstyle-plugin:org.apache.maven.plugins,\
+  maven-pmd-plugin:org.apache.maven.plugins,\
+  ...
 ```
-From then on, it's yours: add, remove, or comment out (`#`) lines to change what's filtered on the
-next build, no flags needed. Commit it like you would `.mvn/extensions.xml` or `.mvn/jvm.config`,
-so the whole team gets the same local dev experience rather than everyone tuning their own copy.
-Emptying it out entirely (or commenting out every line) disables filtering, same as the blank
-system property value below.
+From then on, it's yours: add or remove lines (keeping the trailing `\` continuation on every line
+but the last) to change what's filtered on the next build, no flags needed. Commit it like you
+would `.mvn/extensions.xml` or `.mvn/jvm.config`, so the whole team gets the same local dev
+experience rather than everyone tuning their own copy. Clearing the value entirely
+(`filterPlugins=`) disables filtering, same as the blank system property value below.
 
 The one-off, invocation-only way: set the `filterPlugins` system property to a comma-separated list
 of the same descriptor syntax, e.g.:
@@ -128,7 +131,7 @@ mvn -DfilterInfo verify
 ```
 
 ## Disabling the extension (e.g. for CI)
-Since `.mvn/filterPlugins.txt` (like `.mvn/jvm.config`) is typically committed to the repository,
+Since `.mvn/filterPlugins.properties` (like `.mvn/jvm.config`) is typically committed to the repository,
 it applies to every build, including your CI pipeline. To let CI run with the full, unfiltered set
 of plugins without touching either file, override with a blank value on the command line:
 ```
@@ -136,7 +139,7 @@ mvn -DfilterPlugins= verify
 ```
 
 ## Compatibility with mvnd (the Maven Daemon)
-The extension re-reads `filterPlugins` and `.mvn/filterPlugins.txt` on every build rather than
+The extension re-reads `filterPlugins` and `.mvn/filterPlugins.properties` on every build rather than
 caching either once, so it correctly picks up a different value - or a just-saved edit to the file
 - on the next `mvnd` invocation even when the daemon reuses the same warm JVM (and thus the same
 extension component instance) - no need to run `mvnd --stop` in between. `-DfilterInfo`'s

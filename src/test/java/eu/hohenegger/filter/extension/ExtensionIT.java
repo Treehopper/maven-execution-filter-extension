@@ -140,8 +140,9 @@ public class ExtensionIT {
 
   /**
    * No {@value #FILTER_PLUGINS_SYS_PROP} system property at all here - the fixture ships its own
-   * pre-existing {@code .mvn/filterPlugins.txt}, simulating a developer having already edited the
-   * file created on a previous run. Proves the persisted-file path works without any -D flag.
+   * pre-existing {@code .mvn/filterPlugins.properties}, simulating a developer having already
+   * edited the file created on a previous run. Proves the persisted-file path works without any -D
+   * flag.
    */
   @MavenTest
   @MavenOption(NO_TRANSFER_PROGRESS)

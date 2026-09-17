@@ -22,6 +22,7 @@ package eu.hohenegger.filter.extension;
 import static java.util.function.Predicate.not;
 
 import java.io.IOException;
+import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
@@ -29,6 +30,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Properties;
 import javax.inject.Inject;
 import javax.inject.Named;
 import org.codehaus.plexus.logging.Logger;
@@ -45,8 +47,12 @@ public class PropertiesProvider {
    */
   public static final String FILTER_INFO_SYS_PROP = "filterInfo";
 
-  /** Name of the persisted, user-editable config file inside {@code .mvn/}. */
-  static final String CONFIG_FILE_NAME = "filterPlugins.txt";
+  /**
+   * Name of the persisted, user-editable config file inside {@code .mvn/} - a standard {@code
+   * .properties} file with a single {@value #FILTER_PLUGINS_SYS_PROP} key, so its syntax mirrors
+   * the system property of the same name.
+   */
+  static final String CONFIG_FILE_NAME = "filterPlugins.properties";
 
   /**
    * Widely-used checker/reporting plugins that are removed from the build by default. Used both as
@@ -83,8 +89,8 @@ public class PropertiesProvider {
    * <p>Otherwise, the persisted {@value #CONFIG_FILE_NAME} file inside {@code .mvn/} is used. The
    * first time this runs in a project (i.e. that file doesn't exist yet), it is created with {@link
    * #DEFAULT_FILTERED_PLUGIN_DESCRIPTORS}, which are also returned for that build; from then on,
-   * it's plain text meant to be edited directly - one descriptor per line, commit it so the whole
-   * team shares the same local dev experience.
+   * it's a plain {@code .properties} file meant to be edited directly - commit it so the whole team
+   * shares the same local dev experience.
    */
   public List<String> getPluginDescriptors() {
     if (System.getProperties().containsKey(FILTER_PLUGINS_SYS_PROP)) {
@@ -147,28 +153,36 @@ public class PropertiesProvider {
     }
   }
 
+  /**
+   * One descriptor per continuation line for readability, joined with {@code ",\"} - a standard
+   * {@code .properties} line continuation, verified to round-trip correctly through {@link
+   * Properties#load(Reader)} (leading whitespace on continuation lines is stripped by the parser).
+   */
   private static String defaultConfigFileContent() {
     var header =
         """
         # Plugins filtered from local builds by maven-execution-filter-extension.
         #
-        # One artifactId[:groupId[:version]] descriptor per line. Blank lines and lines starting
-        # with '#' are ignored. Remove a line to stop filtering that plugin locally; add a line to
-        # filter another. Commit this file so your team shares the same local dev experience.
+        # Comma-separated artifactId[:groupId[:version]] descriptors, one per continuation line
+        # below for readability - keep the trailing '\\' on every line except the last. Add or
+        # remove a line to change what's filtered locally; clear the value entirely
+        # (filterPlugins=) to disable filtering. Commit this file so your team shares the same
+        # local dev experience.
         #
         # To override this file for a single build without editing it:
         #   -DfilterPlugins=artifactId[:groupId[:version]][,...]
-        # To disable filtering entirely for one build:
+        # To disable filtering entirely for one build without editing this file:
         #   -DfilterPlugins=
         """;
-    return header + String.join("\n", DEFAULT_FILTERED_PLUGIN_DESCRIPTORS) + "\n";
+    var value = String.join(",\\\n  ", DEFAULT_FILTERED_PLUGIN_DESCRIPTORS);
+    return header + FILTER_PLUGINS_SYS_PROP + "=" + value + "\n";
   }
 
   private static List<String> readConfigFile(Path configFile) throws IOException {
-    return Files.readAllLines(configFile, StandardCharsets.UTF_8).stream()
-        .map(String::trim)
-        .filter(not(String::isEmpty))
-        .filter(not(line -> line.startsWith("#")))
-        .toList();
+    var properties = new Properties();
+    try (Reader reader = Files.newBufferedReader(configFile, StandardCharsets.UTF_8)) {
+      properties.load(reader);
+    }
+    return parseCommaSeparated(properties.getProperty(FILTER_PLUGINS_SYS_PROP, ""));
   }
 }
