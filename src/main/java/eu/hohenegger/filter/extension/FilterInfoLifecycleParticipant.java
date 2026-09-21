@@ -116,6 +116,11 @@ public class FilterInfoLifecycleParticipant extends AbstractMavenLifecyclePartic
             plugin ->
                 "%s:%s:%s"
                     .formatted(plugin.getGroupId(), plugin.getArtifactId(), plugin.getVersion()))
+        // a plugin's own POM is commonly read more than once per build (see
+        // FilteringModelProcessor's javadoc), and a delegate ModelProcessor from another core
+        // extension (e.g. one that injects a plugin of its own into the build, such as
+        // maven-git-versioning-extension) multiplies that further - dedupe for a readable summary
+        .distinct()
         .collect(Collectors.joining(", "));
   }
 }

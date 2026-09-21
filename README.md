@@ -157,6 +157,38 @@ reader itself, so it reliably prints again on the next build rather than only th
 daemon ever served. (Resolving the extension itself from JitPack under `mvnd` is a separate matter
 - see the note on core extension resolution above.)
 
+## Compatibility with other core extensions (e.g. maven-git-versioning-extension)
+Maven allows exactly one core extension to take over reading POMs from disk - the mechanism every
+such extension (including this one) uses to hook in is a single, unqualified lookup that can only
+resolve to one implementation. If another installed core extension does the same thing - the
+best-known example being [maven-git-versioning-extension](https://github.com/qoomon/maven-git-versioning-extension),
+which rewrites `${project.version}` based on the current git branch/tag - only one of the two can
+win that lookup, determined by extension load order rather than anything either extension's author
+controls.
+
+To still let both work together, this extension looks up every other registered POM reader and
+delegates the actual disk read to one of them before applying its own filtering - so whichever of
+the two ends up winning the lookup, the other one's logic still runs as part of the chain. This
+requires no configuration; it is automatic whenever another core extension is present.
+
+This only works if the *other* extension is new enough to have equivalent delegation logic of its
+own, for the case where it wins the lookup instead. For maven-git-versioning-extension specifically:
+- **7.x and later that predate 9.7.0**: has no concept of another `ModelProcessor` at all, so it
+  either wins the lookup outright (and this extension never runs, with no error) or loses it (in
+  which case this extension's delegation reaches it correctly, and both extensions work as
+  expected) - verified with 7.3.0.
+- **9.7.0+**: added its own delegation logic, but its plugin-version-rewriting step assumes the
+  plugin list is unchanged before and after delegating - an assumption this extension's filtering
+  breaks. In a multi-module (reactor) build, this can crash the build entirely with `Internal
+  error: java.lang.IllegalArgumentException: Collections sizes are not equals` inside
+  `GitVersioningModelProcessor.updatePluginVersions`. This is a bug in that extension's own
+  reconciliation logic, not something fixable from here; if you hit it, consider reporting it
+  upstream, or pinning to a pre-9.7.0 release in the meantime.
+
+If you use a different extension that also reads/rewrites POMs and see it stop working (or this one
+stop working) once both are installed, this is almost certainly the same class of conflict - check
+whether it delegates to other `ModelProcessor` implementations before assuming otherwise.
+
 # Development
 Building this project requires JDK 17+ (the compiled classes still target Java 17 - see
 `java.version` in `pom.xml`).

@@ -21,13 +21,19 @@ package eu.hohenegger.filter.extension;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.Reader;
 import java.util.List;
+import java.util.Map;
 import org.apache.maven.model.Build;
 import org.apache.maven.model.BuildBase;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.Parent;
 import org.apache.maven.model.Plugin;
 import org.apache.maven.model.Profile;
+import org.apache.maven.model.building.ModelProcessor;
 import org.codehaus.plexus.logging.console.ConsoleLogger;
 import org.junit.jupiter.api.Test;
 
@@ -171,6 +177,49 @@ public class FilteringModelProcessorTest {
 
     assertThat(modelProcessor.accumulatedRemovedPlugins()).isEmpty();
     assertThat(modelProcessor.accumulatedRemainingPlugins()).isEmpty();
+  }
+
+  @Test
+  public void delegatesRawReadToAnotherRegisteredModelProcessorWhenPresent() throws IOException {
+    var modelProcessor = processorFor("maven-checkstyle-plugin:org.apache.maven.plugins");
+
+    var rawModelFromDelegate = new Model();
+    var build = new Build();
+    build.addPlugin(plugin("org.apache.maven.plugins", "maven-checkstyle-plugin"));
+    build.addPlugin(plugin("org.apache.maven.plugins", "maven-surefire-plugin"));
+    rawModelFromDelegate.setBuild(build);
+
+    modelProcessor.setDelegate(List.of(modelProcessor, fakeModelProcessor(rawModelFromDelegate)));
+
+    var result = modelProcessor.read(new File("pom.xml"), Map.of());
+
+    assertThat(result.getBuild().getPlugins())
+        .extracting(Plugin::getArtifactId)
+        .containsExactly("maven-surefire-plugin");
+  }
+
+  private static ModelProcessor fakeModelProcessor(Model modelToReturn) {
+    return new ModelProcessor() {
+      @Override
+      public File locatePom(File projectDirectory) {
+        return new File(projectDirectory, "pom.xml");
+      }
+
+      @Override
+      public Model read(File input, Map<String, ?> options) {
+        return modelToReturn;
+      }
+
+      @Override
+      public Model read(Reader input, Map<String, ?> options) {
+        return modelToReturn;
+      }
+
+      @Override
+      public Model read(InputStream input, Map<String, ?> options) {
+        return modelToReturn;
+      }
+    };
   }
 
   private static PropertiesProvider propertiesProviderFor(
