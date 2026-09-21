@@ -122,7 +122,9 @@ execution, use Maven's own `-DskipTests` (or `-Dmaven.test.skip=true`) instead.
 Add `-DfilterInfo` to any build to print, once at the start: exactly which plugins were removed
 from that build, which of the plugins still declared in it you could add to the filter too, the
 full list currently configured to be filtered, and a short reminder of how to customize or disable
-it:
+it. In a multi-module (reactor) build, this reflects the totals across every module, not just the
+first one Maven happens to read (typically the parent aggregator POM, which usually has no plugins
+of its own):
 ```
 mvn -DfilterInfo verify
 ```
@@ -148,11 +150,12 @@ The extension re-reads `filterPlugins` and `.mvn/filterPlugins.properties` on ev
 caching either once, so it correctly picks up a different value - or a just-saved edit to the file
 - on the next `mvnd` invocation even when the daemon reuses the same warm JVM (and thus the same
 extension component instance) - no need to run `mvnd --stop` in between. `-DfilterInfo`'s
-once-per-build summary (see above) is also safe under daemon reuse: each
-`mvnd`-served build runs on its own fresh thread even though the component instance is shared, and
-the "print once" guard is thread-scoped rather than shared, so it reliably prints again on the next
-build rather than only the first one the daemon ever served. (Resolving the extension itself from
-JitPack under `mvnd` is a separate matter - see the note on core extension resolution above.)
+once-per-build summary (see above) is also safe under daemon reuse: it is printed by a Maven
+lifecycle participant hook that fires exactly once per build (with a fresh `MavenSession` each
+time, even when the daemon reuses the same component instance), rather than by a flag on the model
+reader itself, so it reliably prints again on the next build rather than only the first one the
+daemon ever served. (Resolving the extension itself from JitPack under `mvnd` is a separate matter
+- see the note on core extension resolution above.)
 
 # Development
 Building this project requires JDK 17+ (the compiled classes still target Java 17 - see

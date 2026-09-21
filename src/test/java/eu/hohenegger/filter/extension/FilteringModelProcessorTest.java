@@ -144,59 +144,33 @@ public class FilteringModelProcessorTest {
   }
 
   @Test
-  public void doesNotPrintInfoWhenNotRequested() {
-    var logger = new CapturingLogger();
-    var modelProcessor =
-        new FilteringModelProcessor(
-            logger, propertiesProviderFor(false, "maven-checkstyle-plugin"));
+  public void accumulatesResultsAcrossMultipleFilterCallsUntilReset() {
+    var modelProcessor = processorFor("maven-checkstyle-plugin:org.apache.maven.plugins");
 
-    var model = new Model();
-    var build = new Build();
-    build.addPlugin(plugin("org.apache.maven.plugins", "maven-checkstyle-plugin"));
-    model.setBuild(build);
+    var parentModel = new Model();
+    var parentBuild = new Build();
+    parentBuild.addPlugin(plugin("org.apache.maven.plugins", "maven-surefire-plugin"));
+    parentModel.setBuild(parentBuild);
 
-    modelProcessor.filter(model);
+    var moduleModel = new Model();
+    var moduleBuild = new Build();
+    moduleBuild.addPlugin(plugin("org.apache.maven.plugins", "maven-checkstyle-plugin"));
+    moduleModel.setBuild(moduleBuild);
 
-    assertThat(logger.infoMessages)
-        .noneMatch(message -> message.contains("maven-execution-filter-extension"));
-  }
+    modelProcessor.filter(parentModel);
+    modelProcessor.filter(moduleModel);
 
-  @Test
-  public void printsInfoOnceWhenRequested() {
-    var logger = new CapturingLogger();
-    var modelProcessor =
-        new FilteringModelProcessor(logger, propertiesProviderFor(true, "maven-checkstyle-plugin"));
+    assertThat(modelProcessor.accumulatedRemovedPlugins())
+        .extracting(Plugin::getArtifactId)
+        .containsExactly("maven-checkstyle-plugin");
+    assertThat(modelProcessor.accumulatedRemainingPlugins())
+        .extracting(Plugin::getArtifactId)
+        .containsExactly("maven-surefire-plugin");
 
-    var model = new Model();
-    var build = new Build();
-    build.addPlugin(plugin("org.apache.maven.plugins", "maven-checkstyle-plugin"));
-    build.addPlugin(plugin("org.apache.maven.plugins", "maven-surefire-plugin"));
-    model.setBuild(build);
+    modelProcessor.resetAccumulatedResults();
 
-    modelProcessor.filter(model);
-    modelProcessor.filter(new Model());
-
-    assertThat(logger.infoMessages)
-        .filteredOn(message -> message.contains("maven-execution-filter-extension"))
-        .hasSize(1);
-    assertThat(logger.infoMessages)
-        .anyMatch(
-            message ->
-                message.contains("filtered from this build")
-                    && message.contains("org.apache.maven.plugins:maven-checkstyle-plugin")
-                    && !message.contains("maven-surefire-plugin"));
-    assertThat(logger.infoMessages)
-        .anyMatch(
-            message ->
-                message.contains("could still be filtered")
-                    && message.contains("org.apache.maven.plugins:maven-surefire-plugin")
-                    && !message.contains("maven-checkstyle-plugin"));
-    assertThat(logger.infoMessages)
-        .anyMatch(
-            message ->
-                message.contains("configured to be filtered")
-                    && message.contains("maven-checkstyle-plugin"));
-    assertThat(logger.infoMessages).anyMatch(message -> message.contains("-DfilterPlugins="));
+    assertThat(modelProcessor.accumulatedRemovedPlugins()).isEmpty();
+    assertThat(modelProcessor.accumulatedRemainingPlugins()).isEmpty();
   }
 
   private static PropertiesProvider propertiesProviderFor(

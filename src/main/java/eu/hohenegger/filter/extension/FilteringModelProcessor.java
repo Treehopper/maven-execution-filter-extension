@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -58,13 +59,17 @@ public class FilteringModelProcessor extends DefaultModelProcessor {
   private final PropertiesProvider propertiesProvider;
 
   /**
-   * Thread-scoped rather than a single shared flag: under a Maven daemon (mvnd) that reuses this
-   * singleton component across builds, each build runs on its own fresh thread even though the
-   * component instance stays the same (verified empirically - the daemon reuses the component but
-   * not the thread), so this still resets per build there while also deduplicating the several
-   * redundant re-reads of the same project's model that happen within one build.
+   * Accumulates results across every project's model read during a build - a reactor build reads
+   * many POMs (parent aggregator plus every module), and {@link FilterInfoLifecycleParticipant}
+   * needs the totals across all of them, not just whichever one happened to be read first (see
+   * {@link #resetAccumulatedResults()}). Synchronized since model reading is not guaranteed to
+   * happen on a single thread.
    */
-  private final ThreadLocal<Boolean> infoPrinted = ThreadLocal.withInitial(() -> false);
+  private final List<Plugin> accumulatedRemovedPlugins =
+      Collections.synchronizedList(new ArrayList<>());
+
+  private final List<Plugin> accumulatedRemainingPlugins =
+      Collections.synchronizedList(new ArrayList<>());
 
   @Inject
   public FilteringModelProcessor(Logger logger, PropertiesProvider propertiesProvider) {
@@ -123,11 +128,14 @@ public class FilteringModelProcessor extends DefaultModelProcessor {
    * check, plugins would be "filtered" (and logged) out of unrelated third-party POMs read only for
    * dependency resolution, which has no effect on the actual build but produces confusing log noise
    * - exactly what this extension is meant to avoid. When the location cannot be determined,
-   * filtering is applied, since that is the common case for an actual project POM read from disk.
+   * filtering is skipped: empirically, that happens for artifact-metadata reads (e.g. resolving
+   * this extension's own dependency chain, including Maven's/ASF's own parent POMs, which commonly
+   * declare source/javadoc/deploy plugin configuration for their own release process) rather than
+   * for the actual project POM, whose {@code read(File, ...)} overload always has a real filename.
    */
   private static boolean isProjectPom(String location) {
     if (location == null) {
-      return true;
+      return false;
     }
     var normalized = location.replace('\\', '/');
     var lastSlash = normalized.lastIndexOf('/');
@@ -152,9 +160,29 @@ public class FilteringModelProcessor extends DefaultModelProcessor {
                       profile.getBuild(), filteredPlugins, removedPlugins, remainingPlugins));
     }
 
-    printInfoOnce(configuredDescriptors, removedPlugins, remainingPlugins);
+    accumulatedRemovedPlugins.addAll(removedPlugins);
+    accumulatedRemainingPlugins.addAll(remainingPlugins);
 
     return model;
+  }
+
+  /**
+   * Clears the results accumulated so far - called once per build (from {@link
+   * FilterInfoLifecycleParticipant#afterSessionStart}, which fires before any project is read),
+   * since this component is a singleton reused across builds under a Maven daemon (mvnd) and would
+   * otherwise keep reporting totals from previous builds too.
+   */
+  void resetAccumulatedResults() {
+    accumulatedRemovedPlugins.clear();
+    accumulatedRemainingPlugins.clear();
+  }
+
+  List<Plugin> accumulatedRemovedPlugins() {
+    return List.copyOf(accumulatedRemovedPlugins);
+  }
+
+  List<Plugin> accumulatedRemainingPlugins() {
+    return List.copyOf(accumulatedRemainingPlugins);
   }
 
   private void filterBuild(
@@ -169,59 +197,6 @@ public class FilteringModelProcessor extends DefaultModelProcessor {
     build.setPlugins(partitioned.get(false));
     removed.addAll(partitioned.get(true));
     remaining.addAll(partitioned.get(false));
-  }
-
-  /**
-   * Prints, once per build (see {@link #infoPrinted}), a summary of what this extension actually
-   * removed from the build, which of the plugins still declared in it could be added to the filter
-   * too, plus a short usage reminder - gated behind {@value
-   * PropertiesProvider#FILTER_INFO_SYS_PROP} so it stays silent otherwise.
-   */
-  private void printInfoOnce(
-      List<String> configuredDescriptors,
-      List<Plugin> removedPlugins,
-      List<Plugin> remainingPlugins) {
-    if (!propertiesProvider.isFilterInfoRequested() || infoPrinted.get()) {
-      return;
-    }
-    infoPrinted.set(true);
-    logger.info("");
-    logger.info(
-        "maven-execution-filter-extension (-D%s):"
-            .formatted(PropertiesProvider.FILTER_INFO_SYS_PROP));
-    logger.info(infoLine("filtered from this build", describe(removedPlugins)));
-    logger.info(infoLine("could still be filtered", describe(remainingPlugins)));
-    logger.info(
-        infoLine(
-            "configured to be filtered",
-            configuredDescriptors.isEmpty()
-                ? "none (disabled)"
-                : String.join(", ", configuredDescriptors)));
-    logger.info(
-        infoLine(
-            "customize the list",
-            "-D%s=artifactId[:groupId[:version]][,...]"
-                .formatted(PropertiesProvider.FILTER_PLUGINS_SYS_PROP)));
-    logger.info(
-        infoLine(
-            "disable entirely", "-D%s=".formatted(PropertiesProvider.FILTER_PLUGINS_SYS_PROP)));
-    logger.info("");
-  }
-
-  private static String infoLine(String label, String value) {
-    return "  %-25s: %s".formatted(label, value);
-  }
-
-  private static String describe(List<Plugin> plugins) {
-    if (plugins.isEmpty()) {
-      return "none";
-    }
-    return plugins.stream()
-        .map(
-            plugin ->
-                "%s:%s:%s"
-                    .formatted(plugin.getGroupId(), plugin.getArtifactId(), plugin.getVersion()))
-        .collect(Collectors.joining(", "));
   }
 
   boolean isFilteredPlugin(Plugin plugin, List<Plugin> filteredPlugins) {
