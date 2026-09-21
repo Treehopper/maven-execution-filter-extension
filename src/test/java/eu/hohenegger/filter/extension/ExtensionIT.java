@@ -41,11 +41,10 @@ import org.junit.jupiter.api.BeforeEach;
 public class ExtensionIT {
 
   /**
-   * Only the {@code coexists_with_other_core_extension} fixture ships a
-   * maven-git-versioning-extension config, and that extension needs an actual git repository
-   * (branch/commit) to do anything - itf-maven-plugin copies fixture files verbatim, it does not
-   * create one. Runs once per test, before itf's own build of the copied project, and is a no-op
-   * (skipped instantly) for every other fixture.
+   * Only fixtures that ship a maven-git-versioning-extension config need this - that extension
+   * needs an actual git repository (branch/commit) to do anything, and itf-maven-plugin copies
+   * fixture files verbatim, it does not create one. Runs once per test, before itf's own build of
+   * the copied project, and is a no-op (skipped instantly) for every other fixture.
    */
   @BeforeEach
   void initGitRepositoryIfFixtureNeedsOne(MavenProjectResult mavenProjectResult) throws Exception {
@@ -224,5 +223,26 @@ public class ExtensionIT {
         .info()
         .contains("Plugin [org.apache.maven.plugins:maven-checkstyle-plugin:3.1.2] filtered")
         .contains("maven-execution-filter-extension (-DfilterInfo):");
+  }
+
+  /**
+   * The flip side of {@link #coexists_with_other_core_extension}: same two extensions, same
+   * maven-git-versioning-extension version, but declared in the opposite order in {@code
+   * .mvn/extensions.xml}. That reverses which one wins Maven's single {@code ModelProcessor} lookup
+   * - maven-git-versioning-extension 7.3.0 wins here instead - and since that version has no
+   * delegation logic of its own (confirmed by hand: it always calls {@code super.read(...)}
+   * directly), it never calls into this extension at all. The version still gets rewritten
+   * correctly, proving the other extension is genuinely running, but plugin filtering silently does
+   * not happen: checkstyle actually executes against this fixture's deliberately-missing config
+   * file (same trick as {@link #disabled}) and the build fails. Demonstrates the actual limit of
+   * this extension's delegation fix - it only helps when this extension wins that lookup - see the
+   * "Compatibility with other core extensions" section of the README.
+   */
+  @MavenTest
+  @MavenOption(NO_TRANSFER_PROGRESS)
+  void loses_to_other_core_extension_without_delegation_support(MavenExecutionResult result) {
+    assertThat(result).isFailure();
+    assertThat(result).out().info().anyMatch(line -> line.contains("it-test-SNAPSHOT"));
+    assertThat(result).out().info().contains("--- checkstyle:3.1.2:check (default) @ bar ---");
   }
 }
