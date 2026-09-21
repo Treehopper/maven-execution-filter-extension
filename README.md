@@ -179,19 +179,31 @@ own, for the case where it wins the lookup instead. For maven-git-versioning-ext
   expected) - verified with 7.3.0.
 - **9.7.0+**: added its own delegation logic, but its plugin-version-rewriting step assumes the
   plugin list is unchanged before and after delegating - an assumption this extension's filtering
-  breaks. In a multi-module (reactor) build, this can crash the build entirely with `Internal
-  error: java.lang.IllegalArgumentException: Collections sizes are not equals` inside
+  breaks the moment it actually removes a plugin, regardless of whether the project is
+  single-module or a multi-module reactor. This crashes the build entirely with `Internal error:
+  java.lang.IllegalArgumentException: Collections sizes are not equals` inside
   `GitVersioningModelProcessor.updatePluginVersions`. This is a bug in that extension's own
   reconciliation logic, not something fixable from here; if you hit it, consider reporting it
   upstream, or pinning to a pre-9.7.0 release in the meantime.
+
+Separately, on Maven 3.8.x and earlier: see the note on the Java 11 bytecode target below - an
+older extension build compiled for Java 15+ is invisible to *any* other core extension's own
+delegation search on those Maven versions (and to Maven's own core-extension lookup), regardless
+of which extension it is combined with.
 
 If you use a different extension that also reads/rewrites POMs and see it stop working (or this one
 stop working) once both are installed, this is almost certainly the same class of conflict - check
 whether it delegates to other `ModelProcessor` implementations before assuming otherwise.
 
 # Development
-Building this project requires JDK 17+ (the compiled classes still target Java 17 - see
-`java.version` in `pom.xml`).
+Building this project requires JDK 17+, but the compiled classes target Java 11 (see
+`java.version` in `pom.xml`) - deliberately capped there rather than following the build JDK.
+Maven 3.8.x and earlier bundle a much older Eclipse Sisu whose embedded ASM fork silently fails to
+discover an `@Named` core-extension component compiled for Java 15+ (no error - it just never
+runs). Since this project *is* a core extension, loaded by whatever Maven version the user's own
+project happens to run rather than anything this build controls, raising `java.version` past 14
+means deliberately dropping support for Maven <= 3.8.x - do that only on purpose, not as a
+drive-by bump.
 
 ## Code quality and coverage (Codacy)
 The repository is connected to [Codacy](https://app.codacy.com/gh/Treehopper/maven-execution-filter-extension/dashboard)

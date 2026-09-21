@@ -126,7 +126,7 @@ public class FilteringModelProcessor extends DefaultModelProcessor {
   }
 
   private List<Plugin> parseFilteredPlugins(List<String> descriptors) {
-    return descriptors.stream().map(this::loadPluginToBeFiltered).toList();
+    return descriptors.stream().map(this::loadPluginToBeFiltered).collect(Collectors.toList());
   }
 
   private Plugin loadPluginToBeFiltered(String pluginDescriptor) {
@@ -209,7 +209,7 @@ public class FilteringModelProcessor extends DefaultModelProcessor {
 
   private static String locationOf(Map<String, ?> options) {
     var source = options == null ? null : options.get(ModelProcessor.SOURCE);
-    return source instanceof Source theSource ? theSource.getLocation() : null;
+    return source instanceof Source ? ((Source) source).getLocation() : null;
   }
 
   /**
@@ -298,8 +298,9 @@ public class FilteringModelProcessor extends DefaultModelProcessor {
 
     if (ofilteredPlugin.isPresent()) {
       logger.info(
-          "Plugin [%s:%s:%s] filtered"
-              .formatted(plugin.getGroupId(), plugin.getArtifactId(), plugin.getVersion()));
+          String.format(
+              "Plugin [%s:%s:%s] filtered",
+              plugin.getGroupId(), plugin.getArtifactId(), plugin.getVersion()));
     }
 
     return ofilteredPlugin.isPresent();

@@ -76,8 +76,8 @@ public class FilterInfoLifecycleParticipant extends AbstractMavenLifecyclePartic
     var configuredDescriptors = propertiesProvider.getPluginDescriptors();
     logger.info("");
     logger.info(
-        "maven-execution-filter-extension (-D%s):"
-            .formatted(PropertiesProvider.FILTER_INFO_SYS_PROP));
+        String.format(
+            "maven-execution-filter-extension (-D%s):", PropertiesProvider.FILTER_INFO_SYS_PROP));
     logger.info(
         infoLine(
             "filtered from this build",
@@ -95,16 +95,18 @@ public class FilterInfoLifecycleParticipant extends AbstractMavenLifecyclePartic
     logger.info(
         infoLine(
             "customize the list",
-            "-D%s=artifactId[:groupId[:version]][,...]"
-                .formatted(PropertiesProvider.FILTER_PLUGINS_SYS_PROP)));
+            String.format(
+                "-D%s=artifactId[:groupId[:version]][,...]",
+                PropertiesProvider.FILTER_PLUGINS_SYS_PROP)));
     logger.info(
         infoLine(
-            "disable entirely", "-D%s=".formatted(PropertiesProvider.FILTER_PLUGINS_SYS_PROP)));
+            "disable entirely",
+            String.format("-D%s=", PropertiesProvider.FILTER_PLUGINS_SYS_PROP)));
     logger.info("");
   }
 
   private static String infoLine(String label, String value) {
-    return "  %-25s: %s".formatted(label, value);
+    return String.format("  %-25s: %s", label, value);
   }
 
   private static String describe(List<Plugin> plugins) {
@@ -114,8 +116,8 @@ public class FilterInfoLifecycleParticipant extends AbstractMavenLifecyclePartic
     return plugins.stream()
         .map(
             plugin ->
-                "%s:%s:%s"
-                    .formatted(plugin.getGroupId(), plugin.getArtifactId(), plugin.getVersion()))
+                String.format(
+                    "%s:%s:%s", plugin.getGroupId(), plugin.getArtifactId(), plugin.getVersion()))
         // a plugin's own POM is commonly read more than once per build (see
         // FilteringModelProcessor's javadoc), and a delegate ModelProcessor from another core
         // extension (e.g. one that injects a plugin of its own into the build, such as

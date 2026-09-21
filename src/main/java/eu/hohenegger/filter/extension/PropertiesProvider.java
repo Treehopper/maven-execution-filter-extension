@@ -31,6 +31,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
+import java.util.stream.Collectors;
 import javax.inject.Inject;
 import javax.inject.Named;
 import org.codehaus.plexus.logging.Logger;
@@ -105,7 +106,10 @@ public class PropertiesProvider {
   }
 
   private static List<String> parseCommaSeparated(String value) {
-    return Arrays.stream(value.split(",")).map(String::trim).filter(not(String::isEmpty)).toList();
+    return Arrays.stream(value.split(","))
+        .map(String::trim)
+        .filter(not(String::isEmpty))
+        .collect(Collectors.toList());
   }
 
   private List<String> readOrInitializeConfigFile() {
@@ -160,20 +164,24 @@ public class PropertiesProvider {
    */
   private static String defaultConfigFileContent() {
     var header =
-        """
-        # Plugins filtered from local builds by maven-execution-filter-extension.
-        #
-        # Comma-separated artifactId[:groupId[:version]] descriptors, one per continuation line
-        # below for readability - keep the trailing '\\' on every line except the last. Add or
-        # remove a line to change what's filtered locally; clear the value entirely
-        # (filterPlugins=) to disable filtering. Commit this file so your team shares the same
-        # local dev experience.
-        #
-        # To override this file for a single build without editing it:
-        #   -DfilterPlugins=artifactId[:groupId[:version]][,...]
-        # To disable filtering entirely for one build without editing this file:
-        #   -DfilterPlugins=
-        """;
+        String.join(
+                "\n",
+                "# Plugins filtered from local builds by maven-execution-filter-extension.",
+                "#",
+                "# Comma-separated artifactId[:groupId[:version]] descriptors, one per continuation"
+                    + " line",
+                "# below for readability - keep the trailing '\\' on every line except the last."
+                    + " Add or",
+                "# remove a line to change what's filtered locally; clear the value entirely",
+                "# (filterPlugins=) to disable filtering. Commit this file so your team shares the"
+                    + " same",
+                "# local dev experience.",
+                "#",
+                "# To override this file for a single build without editing it:",
+                "#   -DfilterPlugins=artifactId[:groupId[:version]][,...]",
+                "# To disable filtering entirely for one build without editing this file:",
+                "#   -DfilterPlugins=")
+            + "\n";
     var value = String.join(",\\\n  ", DEFAULT_FILTERED_PLUGIN_DESCRIPTORS);
     return header + FILTER_PLUGINS_SYS_PROP + "=" + value + "\n";
   }

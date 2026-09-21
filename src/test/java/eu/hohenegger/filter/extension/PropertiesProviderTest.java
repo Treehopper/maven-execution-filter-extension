@@ -95,11 +95,9 @@ public class PropertiesProviderTest {
   public void supportsCommentsAndLineContinuationInConfigFile() throws IOException {
     Files.writeString(
         configFile,
-        """
-        # a hand-edited comment above the property, like the generated header
-        filterPlugins=maven-checkstyle-plugin:org.apache.maven.plugins,\\
-          maven-pmd-plugin:org.apache.maven.plugins
-        """);
+        "# a hand-edited comment above the property, like the generated header\n"
+            + "filterPlugins=maven-checkstyle-plugin:org.apache.maven.plugins,\\\n"
+            + "  maven-pmd-plugin:org.apache.maven.plugins\n");
 
     assertThat(propertiesProvider.getPluginDescriptors())
         .containsExactly(

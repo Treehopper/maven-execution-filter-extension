@@ -21,7 +21,16 @@
   </prerequisites>
 
   <properties>
-    <java.version>17</java.version>
+    <!--
+      Capped at 11, not the highest LTS available: Maven <= 3.8.x bundles a much older Eclipse
+      Sisu whose embedded ASM fork cannot parse class files compiled for Java 15+ (it silently
+      skips discovering any such @Named component - no error, it just never runs). Verified by
+      hand: class file version 58 (Java 14) is discovered fine, 59 (Java 15) is not. Since this is
+      a core extension - loaded by whatever Maven the user's project happens to run, not
+      controlled by this build - raising this requires deliberately dropping support for Maven
+      <= 3.8.x, not just bumping a version number.
+    -->
+    <java.version>11</java.version>
     <maven.compiler.release>${java.version}</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
