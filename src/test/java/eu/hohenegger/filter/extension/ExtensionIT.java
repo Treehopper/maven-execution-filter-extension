@@ -29,9 +29,56 @@ import com.soebes.itf.jupiter.extension.MavenOption;
 import com.soebes.itf.jupiter.extension.MavenTest;
 import com.soebes.itf.jupiter.extension.SystemProperty;
 import com.soebes.itf.jupiter.maven.MavenExecutionResult;
+import com.soebes.itf.jupiter.maven.MavenProjectResult;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import org.junit.jupiter.api.BeforeEach;
 
 @MavenJupiterExtension
 public class ExtensionIT {
+
+  /**
+   * Only the {@code coexists_with_other_core_extension} fixture ships a
+   * maven-git-versioning-extension config, and that extension needs an actual git repository
+   * (branch/commit) to do anything - itf-maven-plugin copies fixture files verbatim, it does not
+   * create one. Runs once per test, before itf's own build of the copied project, and is a no-op
+   * (skipped instantly) for every other fixture.
+   */
+  @BeforeEach
+  void initGitRepositoryIfFixtureNeedsOne(MavenProjectResult mavenProjectResult) throws Exception {
+    var projectDirectory = mavenProjectResult.getTargetProjectDirectory();
+    if (!Files.isRegularFile(projectDirectory.resolve(".mvn/maven-git-versioning-extension.xml"))
+        || Files.isDirectory(projectDirectory.resolve(".git"))) {
+      return;
+    }
+    runGit(projectDirectory, "init", "-q", "-b", "it-test");
+    runGit(projectDirectory, "add", "-A");
+    runGit(
+        projectDirectory,
+        "-c",
+        "user.email=it@it.test",
+        "-c",
+        "user.name=it",
+        "commit",
+        "-q",
+        "-m",
+        "init");
+  }
+
+  private static void runGit(Path directory, String... args)
+      throws IOException, InterruptedException {
+    var command = new ArrayList<>(List.of("git"));
+    command.addAll(List.of(args));
+    var process =
+        new ProcessBuilder(command).directory(directory.toFile()).redirectErrorStream(true).start();
+    var output = new String(process.getInputStream().readAllBytes());
+    if (process.waitFor() != 0) {
+      throw new IllegalStateException("git " + String.join(" ", args) + " failed: " + output);
+    }
+  }
 
   @MavenTest
   @MavenOption(NO_TRANSFER_PROGRESS)
@@ -152,5 +199,30 @@ public class ExtensionIT {
         .out()
         .info()
         .contains("Plugin [org.apache.maven.plugins:maven-checkstyle-plugin:3.1.2] filtered");
+  }
+
+  /**
+   * Regression test for a real conflict between two core extensions that both need to become "the"
+   * {@code ModelProcessor} Maven calls to read POMs - see {@link FilteringModelProcessor}'s class
+   * javadoc. Combines this extension with <a
+   * href="https://github.com/qoomon/maven-git-versioning-extension">maven-git-versioning-extension</a>,
+   * which rewrites the project version from the current git branch (set up as a fixed "it-test"
+   * branch by {@link #initGitRepositoryIfFixtureNeedsOne}), pinned to 7.3.0 - confirmed, by hand,
+   * to have no delegation logic of its own, making this the scenario where this extension's own
+   * delegation (rather than the other extension's) is what makes coexistence possible at all. See
+   * the "Compatibility with other core extensions" section of the README for the newer
+   * maven-git-versioning-extension versions this does not cover.
+   */
+  @MavenTest
+  @MavenOption(NO_TRANSFER_PROGRESS)
+  @SystemProperty(value = FILTER_INFO_SYS_PROP, content = "true")
+  void coexists_with_other_core_extension(MavenExecutionResult result) {
+    assertThat(result).isSuccessful();
+    assertThat(result).out().info().anyMatch(line -> line.contains("it-test-SNAPSHOT"));
+    assertThat(result)
+        .out()
+        .info()
+        .contains("Plugin [org.apache.maven.plugins:maven-checkstyle-plugin:3.1.2] filtered")
+        .contains("maven-execution-filter-extension (-DfilterInfo):");
   }
 }
