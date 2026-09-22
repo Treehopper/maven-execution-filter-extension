@@ -25,6 +25,7 @@ import javax.inject.Inject;
 import javax.inject.Named;
 import javax.inject.Singleton;
 import org.apache.maven.AbstractMavenLifecycleParticipant;
+import org.apache.maven.MavenExecutionException;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.Plugin;
 import org.codehaus.plexus.logging.Logger;
@@ -44,6 +45,12 @@ import org.codehaus.plexus.logging.Logger;
  * robust "once per build" guard than a thread-scoped flag: a Maven daemon (mvnd) that reuses this
  * component's singleton instance across builds still gets a fresh {@link MavenSession}, and
  * therefore a fresh call to {@link #afterSessionStart}/{@link #afterProjectsRead}, for each one.
+ *
+ * <p>{@value PropertiesProvider#FILTER_INFO_SYS_PROP} is a dry run, not just a report printed
+ * alongside an otherwise normal build: once the summary is printed, {@link #afterProjectsRead}
+ * throws to cancel the build before any project actually executes, the standard way for a Maven
+ * lifecycle participant to abort - so a script or CI job that runs {@code -DfilterInfo} by mistake
+ * gets a non-zero exit code instead of quietly building anyway.
  */
 @Named
 @Singleton
@@ -69,7 +76,7 @@ public class FilterInfoLifecycleParticipant extends AbstractMavenLifecyclePartic
   }
 
   @Override
-  public void afterProjectsRead(MavenSession session) {
+  public void afterProjectsRead(MavenSession session) throws MavenExecutionException {
     if (!propertiesProvider.isFilterInfoRequested()) {
       return;
     }
@@ -103,6 +110,12 @@ public class FilterInfoLifecycleParticipant extends AbstractMavenLifecyclePartic
             "disable entirely",
             String.format("-D%s=", PropertiesProvider.FILTER_PLUGINS_SYS_PROP)));
     logger.info("");
+    throw new MavenExecutionException(
+        String.format(
+            "Build cancelled: -D%s only prints this summary, it does not run the build - remove"
+                + " it to build normally.",
+            PropertiesProvider.FILTER_INFO_SYS_PROP),
+        (Throwable) null);
   }
 
   private static String infoLine(String label, String value) {

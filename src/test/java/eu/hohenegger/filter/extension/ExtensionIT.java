@@ -152,7 +152,9 @@ public class ExtensionIT {
       content = "maven-checkstyle-plugin:org.apache.maven.plugins")
   @SystemProperty(value = FILTER_INFO_SYS_PROP, content = "true")
   void filter_info(MavenExecutionResult result) {
-    assertThat(result).isSuccessful();
+    // -DfilterInfo is a dry run: it cancels the build right after printing, so this is expected
+    // to fail rather than succeed - see FilterInfoLifecycleParticipant#afterProjectsRead.
+    assertThat(result).isFailure();
     assertThat(result)
         .out()
         .info()
@@ -244,7 +246,11 @@ public class ExtensionIT {
   @MavenOption(NO_TRANSFER_PROGRESS)
   @SystemProperty(value = FILTER_INFO_SYS_PROP, content = "true")
   void coexists_with_other_core_extension(MavenExecutionResult result) {
-    assertThat(result).isSuccessful();
+    // -DfilterInfo cancels the build right after printing (see
+    // FilterInfoLifecycleParticipant#afterProjectsRead) - both the version rewrite and the
+    // filtering it's meant to prove already happened during model reading, well before that
+    // point, so this is expected to fail rather than succeed.
+    assertThat(result).isFailure();
     assertThat(result).out().info().anyMatch(line -> line.contains("it-test-SNAPSHOT"));
     assertThat(result)
         .out()

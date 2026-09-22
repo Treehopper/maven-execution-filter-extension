@@ -155,11 +155,19 @@ mvn -DfilterInfo verify
 [INFO]   configured to be filtered: maven-checkstyle-plugin:org.apache.maven.plugins, ...
 [INFO]   customize the list       : -DfilterPlugins=artifactId[:groupId[:version]][,...]
 [INFO]   disable entirely         : -DfilterPlugins=
+[ERROR] Build cancelled: -DfilterInfo only prints this summary, it does not run the build - remove
+it to build normally.
 ```
 The plugin's version is deliberately left out here: filtering matches on artifactId/groupId only,
 never on version (see [Customizing the filtered plugins](#customizing-the-filtered-plugins)), so
 the same plugin pinned to a different version in each module of a reactor is genuinely one entry,
 not several.
+
+`-DfilterInfo` is a dry run, not something you add alongside a real build: it cancels the build
+right after printing the summary, before any project actually executes, so the console shows
+`BUILD FAILURE` and the process exits non-zero - intentional, not a bug, so a script or CI job that
+runs it by mistake doesn't quietly report success without having built anything. Run the same
+command without `-DfilterInfo` once you're done reading the summary.
 
 ## Disabling the extension (e.g. for CI)
 Since `.mvn/filterPlugins.properties` (like `.mvn/jvm.config`) is typically committed to the repository,

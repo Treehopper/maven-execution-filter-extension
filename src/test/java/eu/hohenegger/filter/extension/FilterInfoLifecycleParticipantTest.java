@@ -20,8 +20,10 @@
 package eu.hohenegger.filter.extension;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
+import org.apache.maven.MavenExecutionException;
 import org.apache.maven.model.Build;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.Plugin;
@@ -53,7 +55,7 @@ public class FilterInfoLifecycleParticipantTest {
   }
 
   @Test
-  public void doesNotPrintInfoWhenNotRequested() {
+  public void doesNotPrintInfoOrCancelTheBuildWhenNotRequested() throws Exception {
     var logger = new CapturingLogger();
     var propertiesProvider = propertiesProviderFor(false, "maven-checkstyle-plugin");
     var modelProcessor = new FilteringModelProcessor(logger, propertiesProvider);
@@ -71,6 +73,22 @@ public class FilterInfoLifecycleParticipantTest {
 
     assertThat(logger.infoMessages)
         .noneMatch(message -> message.contains("maven-execution-filter-extension"));
+  }
+
+  @Test
+  public void cancelsTheBuildAfterPrintingWithAnExplanatoryMessage() {
+    var logger = new CapturingLogger();
+    var propertiesProvider = propertiesProviderFor(true, "maven-checkstyle-plugin");
+    var modelProcessor = new FilteringModelProcessor(logger, propertiesProvider);
+    var participant =
+        new FilterInfoLifecycleParticipant(logger, propertiesProvider, modelProcessor);
+
+    participant.afterSessionStart(null);
+
+    assertThatThrownBy(() -> participant.afterProjectsRead(null))
+        .isInstanceOf(MavenExecutionException.class)
+        .hasMessageContaining("-DfilterInfo")
+        .hasMessageContaining("does not run the build");
   }
 
   @Test
@@ -97,7 +115,8 @@ public class FilterInfoLifecycleParticipantTest {
     participant.afterSessionStart(null);
     modelProcessor.filter(parentModel);
     modelProcessor.filter(moduleModel);
-    participant.afterProjectsRead(null);
+    assertThatThrownBy(() -> participant.afterProjectsRead(null))
+        .isInstanceOf(MavenExecutionException.class);
 
     assertThat(logger.infoMessages)
         .filteredOn(message -> message.contains("maven-execution-filter-extension"))
@@ -138,13 +157,15 @@ public class FilterInfoLifecycleParticipantTest {
     // First build: something is filtered.
     participant.afterSessionStart(null);
     modelProcessor.filter(model);
-    participant.afterProjectsRead(null);
+    assertThatThrownBy(() -> participant.afterProjectsRead(null))
+        .isInstanceOf(MavenExecutionException.class);
 
     // Second build (e.g. a later mvnd-served build reusing the same singleton component):
     // nothing to filter this time, so the summary must not still claim the previous build's
     // result.
     participant.afterSessionStart(null);
-    participant.afterProjectsRead(null);
+    assertThatThrownBy(() -> participant.afterProjectsRead(null))
+        .isInstanceOf(MavenExecutionException.class);
 
     var secondBuildSummary =
         logger.infoMessages.stream()
