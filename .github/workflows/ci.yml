@@ -21,9 +21,17 @@ jobs:
       - name: Upload coverage to Codacy
         # Requires the CODACY_PROJECT_TOKEN repository secret (Codacy dashboard -> repository
         # Settings -> Integrations -> Project API). continue-on-error so a missing/not-yet-added
-        # secret doesn't fail the whole build - it just skips this step.
+        # secret (or a Codacy-side outage) doesn't fail the whole build - the next step turns a
+        # failure here into a visible warning annotation instead of a silent one: this step alone
+        # still shows green in the checks UI even when it failed, which is exactly how a real
+        # upload failure (e.g. an invalid/expired token) went unnoticed here for days before.
+        id: codacy
         continue-on-error: true
         uses: codacy/codacy-coverage-reporter-action@v1
         with:
           project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
           coverage-reports: target/site/jacoco/jacoco.xml
+      - name: Warn if Codacy coverage upload failed
+        if: steps.codacy.outcome == 'failure'
+        run: |
+          echo "::warning title=Codacy coverage upload failed::The coverage badge may be showing stale data - check the CODACY_PROJECT_TOKEN secret and the Codacy dashboard (repository Settings -> Integrations -> Project API)."
