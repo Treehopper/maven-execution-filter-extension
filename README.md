@@ -71,9 +71,11 @@ of every local build.
 
 ## Customizing the filtered plugins
 The persisted, user-editable way: `.mvn/filterPlugins.properties`, a standard `.properties` file
-with a single `filterPlugins` key - same name and comma-separated syntax as the system property
-below, just persisted. The first time the extension runs in a project (i.e. that file doesn't
-exist yet), it's created with the [default list](#default-behaviour) above:
+with a `filterPlugins` key - same name and comma-separated syntax as the system property below,
+just persisted - plus a separate `filterGenerators` key for code generator plugins (see
+[Filtering code generator plugins](#filtering-code-generator-plugins)). The first time the
+extension runs in a project (i.e. that file doesn't exist yet), it's created with the
+[default list](#default-behaviour) above:
 ```properties
 # Plugins filtered from local builds by maven-execution-filter-extension.
 #
@@ -133,10 +135,23 @@ or this particular build doesn't touch that module - to filter them anyway:
 ```
 mvn -DfilterGenerators verify
 ```
-This is additive: it filters the built-in list of generator plugins on top of whatever
+This is additive: it filters the configured generator plugin list on top of whatever
 `filterPlugins`/the persisted config file already filters, even when that other list is empty or
-explicitly disabled (`-DfilterPlugins=`). There is currently no way to customize *which* generator
-plugins this flag targets - if you need that, use `filterPlugins`/the config file directly instead.
+explicitly disabled (`-DfilterPlugins=`).
+
+The generator plugin list itself is just as customizable as `filterPlugins`, but lives under its
+own `filterGenerators` key in the same `.mvn/filterPlugins.properties` file (see
+[Customizing the filtered plugins](#customizing-the-filtered-plugins)), bootstrapped the same way
+with its own built-in default the first time the file is created:
+```properties
+filterGenerators=openapi-generator-maven-plugin:org.openapitools,\
+  swagger-codegen-maven-plugin
+```
+Add or remove a line here to change which generator plugins `-DfilterGenerators` targets - same
+syntax, same rules (`groupId`/`version` optional) as `filterPlugins`. Unlike `filterPlugins`,
+there is no `-DfilterGenerators=...` system-property override for the list itself: that flag only
+turns this filtering on or off - which generator plugins it filters always comes from the config
+file.
 
 ## Seeing what's being filtered
 Add `-DfilterInfo` to any build to print, once at the start: exactly which plugins were removed

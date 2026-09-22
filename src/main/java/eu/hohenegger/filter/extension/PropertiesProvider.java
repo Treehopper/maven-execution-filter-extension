@@ -50,19 +50,25 @@ public class PropertiesProvider {
   public static final String FILTER_INFO_SYS_PROP = "filterInfo";
 
   /**
-   * Opt-in flag (default: disabled) that additionally filters {@link #GENERATOR_PLUGIN_DESCRIPTORS}
-   * out of the build, e.g. {@code -DfilterGenerators}. Unlike {@value #FILTER_PLUGINS_SYS_PROP},
-   * code generator plugins are never filtered by default: removing one can break the build outright
-   * if the sources it generates are needed to compile, so this is only safe to enable for a build
-   * that doesn't need the generated code regenerated (e.g. it's already been generated and
-   * committed, or this build doesn't touch that module).
+   * Opt-in flag (default: disabled), e.g. {@code -DfilterGenerators}, that additionally filters
+   * whatever is configured under this same name's key in the persisted config file (see {@link
+   * #CONFIG_FILE_NAME}, bootstrapped from {@link #GENERATOR_PLUGIN_DESCRIPTORS} the same way
+   * {@value #FILTER_PLUGINS_SYS_PROP} is bootstrapped from {@link
+   * #DEFAULT_FILTERED_PLUGIN_DESCRIPTORS}). Unlike {@value #FILTER_PLUGINS_SYS_PROP}, code
+   * generator plugins are never filtered by default: removing one can break the build outright if
+   * the sources it generates are needed to compile, so this is only safe to enable for a build that
+   * doesn't need the generated code regenerated (e.g. it's already been generated and committed, or
+   * this build doesn't touch that module). This flag only turns that filtering on or off; it does
+   * not carry the list itself - unlike {@value #FILTER_PLUGINS_SYS_PROP}, setting it as a system
+   * property does not accept a comma-separated override.
    */
   public static final String FILTER_GENERATORS_SYS_PROP = "filterGenerators";
 
   /**
    * Name of the persisted, user-editable config file inside {@code .mvn/} - a standard {@code
-   * .properties} file with a single {@value #FILTER_PLUGINS_SYS_PROP} key, so its syntax mirrors
-   * the system property of the same name.
+   * .properties} file with a {@value #FILTER_PLUGINS_SYS_PROP} key and a {@value
+   * #FILTER_GENERATORS_SYS_PROP} key, both named after (and using the same comma-separated syntax
+   * as) their system property counterparts.
    */
   static final String CONFIG_FILE_NAME = "filterPlugins.properties";
 
@@ -118,20 +124,21 @@ public class PropertiesProvider {
    * it's a plain {@code .properties} file meant to be edited directly - commit it so the whole team
    * shares the same local dev experience.
    *
-   * <p>Either way, if {@value #FILTER_GENERATORS_SYS_PROP} is also set, {@link
-   * #GENERATOR_PLUGIN_DESCRIPTORS} are appended on top - independently of whichever of the above
-   * two sources produced the rest of the list, including when {@value #FILTER_PLUGINS_SYS_PROP} is
-   * blank.
+   * <p>Either way, if {@value #FILTER_GENERATORS_SYS_PROP} is also set, whatever is configured
+   * under that same key in the config file is appended on top - independently of whichever of the
+   * above two sources produced the rest of the list, including when {@value
+   * #FILTER_PLUGINS_SYS_PROP} is blank. Unlike {@value #FILTER_PLUGINS_SYS_PROP}, there is no
+   * system-property override for the generator plugin list itself - only the config file.
    */
   public List<String> getPluginDescriptors() {
     var descriptors = new ArrayList<String>();
     if (System.getProperties().containsKey(FILTER_PLUGINS_SYS_PROP)) {
       descriptors.addAll(parseCommaSeparated(System.getProperty(FILTER_PLUGINS_SYS_PROP, "")));
     } else {
-      descriptors.addAll(readOrInitializeConfigFile());
+      descriptors.addAll(readOrInitializeConfigFile().filterPlugins);
     }
     if (isFilterGeneratorsRequested()) {
-      descriptors.addAll(GENERATOR_PLUGIN_DESCRIPTORS);
+      descriptors.addAll(readOrInitializeConfigFile().filterGenerators);
     }
     return descriptors;
   }
@@ -153,17 +160,28 @@ public class PropertiesProvider {
         .collect(Collectors.toList());
   }
 
-  private List<String> readOrInitializeConfigFile() {
+  private Config readOrInitializeConfigFile() {
     var configFile = configFilePath();
     try {
       if (Files.notExists(configFile)) {
         writeDefaultConfigFile(configFile);
-        return DEFAULT_FILTERED_PLUGIN_DESCRIPTORS;
+        return new Config(DEFAULT_FILTERED_PLUGIN_DESCRIPTORS, GENERATOR_PLUGIN_DESCRIPTORS);
       }
       return readConfigFile(configFile);
     } catch (IOException e) {
       logger.warn("Could not access " + configFile + ", falling back to built-in defaults", e);
-      return DEFAULT_FILTERED_PLUGIN_DESCRIPTORS;
+      return new Config(DEFAULT_FILTERED_PLUGIN_DESCRIPTORS, GENERATOR_PLUGIN_DESCRIPTORS);
+    }
+  }
+
+  /** The two lists persisted in the config file - see {@link #CONFIG_FILE_NAME}. */
+  private static final class Config {
+    private final List<String> filterPlugins;
+    private final List<String> filterGenerators;
+
+    private Config(List<String> filterPlugins, List<String> filterGenerators) {
+      this.filterPlugins = filterPlugins;
+      this.filterGenerators = filterGenerators;
     }
   }
 
@@ -223,15 +241,42 @@ public class PropertiesProvider {
                 "# To disable filtering entirely for one build without editing this file:",
                 "#   -DfilterPlugins=")
             + "\n";
-    var value = String.join(",\\\n  ", DEFAULT_FILTERED_PLUGIN_DESCRIPTORS);
-    return header + FILTER_PLUGINS_SYS_PROP + "=" + value + "\n";
+    var filterPluginsProperty =
+        FILTER_PLUGINS_SYS_PROP
+            + "="
+            + String.join(",\\\n  ", DEFAULT_FILTERED_PLUGIN_DESCRIPTORS)
+            + "\n";
+    var generatorsHeader =
+        String.join(
+                "\n",
+                "",
+                "# Code generator plugins - same syntax as "
+                    + FILTER_PLUGINS_SYS_PROP
+                    + " above,"
+                    + " but only",
+                "# filtered when -D"
+                    + FILTER_GENERATORS_SYS_PROP
+                    + " is also passed on the"
+                    + " command line, since",
+                "# removing one can break the build if the sources it generates are needed to"
+                    + " compile. Add",
+                "# or remove a line to change which generator plugins that flag filters.")
+            + "\n";
+    var filterGeneratorsProperty =
+        FILTER_GENERATORS_SYS_PROP
+            + "="
+            + String.join(",\\\n  ", GENERATOR_PLUGIN_DESCRIPTORS)
+            + "\n";
+    return header + filterPluginsProperty + generatorsHeader + filterGeneratorsProperty;
   }
 
-  private static List<String> readConfigFile(Path configFile) throws IOException {
+  private static Config readConfigFile(Path configFile) throws IOException {
     var properties = new Properties();
     try (Reader reader = Files.newBufferedReader(configFile, StandardCharsets.UTF_8)) {
       properties.load(reader);
     }
-    return parseCommaSeparated(properties.getProperty(FILTER_PLUGINS_SYS_PROP, ""));
+    return new Config(
+        parseCommaSeparated(properties.getProperty(FILTER_PLUGINS_SYS_PROP, "")),
+        parseCommaSeparated(properties.getProperty(FILTER_GENERATORS_SYS_PROP, "")));
   }
 }

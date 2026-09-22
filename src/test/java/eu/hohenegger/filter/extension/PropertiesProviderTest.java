@@ -213,4 +213,34 @@ public class PropertiesProviderTest {
     assertThat(propertiesProvider.getPluginDescriptors())
         .isEqualTo(PropertiesProvider.GENERATOR_PLUGIN_DESCRIPTORS);
   }
+
+  @Test
+  public void createsConfigFileWithGeneratorDefaultsOnFirstUseToo() throws IOException {
+    assertThat(configFile).doesNotExist();
+    System.setProperty(FILTER_GENERATORS_SYS_PROP, "true");
+
+    propertiesProvider.getPluginDescriptors();
+
+    var content = Files.readString(configFile);
+    assertThat(content).contains(FILTER_GENERATORS_SYS_PROP + "=");
+    for (var descriptor : PropertiesProvider.GENERATOR_PLUGIN_DESCRIPTORS) {
+      assertThat(content).contains(descriptor);
+    }
+  }
+
+  /**
+   * The generator plugin list is meant to be as user-editable/extendable as {@code filterPlugins}
+   * itself - a custom generator plugin added by hand must take effect, same as editing {@code
+   * filterPlugins} already does.
+   */
+  @Test
+  public void editingTheGeneratorsListInTheConfigFileIsHonored() throws IOException {
+    Files.writeString(
+        configFile,
+        "filterPlugins=\n" + FILTER_GENERATORS_SYS_PROP + "=my-custom-generator-plugin\n");
+    System.setProperty(FILTER_GENERATORS_SYS_PROP, "true");
+
+    assertThat(propertiesProvider.getPluginDescriptors())
+        .containsExactly("my-custom-generator-plugin");
+  }
 }
