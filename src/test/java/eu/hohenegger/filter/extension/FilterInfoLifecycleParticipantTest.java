@@ -121,23 +121,17 @@ public class FilterInfoLifecycleParticipantTest {
     assertThat(logger.infoMessages)
         .filteredOn(message -> message.contains("maven-execution-filter-extension"))
         .hasSize(1);
+    // Each list prints as its own header line followed by one plugin per indented line below,
+    // rather than a single comma-separated line - readable once there is more than a handful of
+    // plugins.
     assertThat(logger.infoMessages)
-        .anyMatch(
-            message ->
-                message.contains("filtered from this build")
-                    && message.contains("org.apache.maven.plugins:maven-checkstyle-plugin")
-                    && !message.contains("maven-surefire-plugin"));
+        .containsSubsequence(
+            "  filtered from this build:", "    org.apache.maven.plugins:maven-checkstyle-plugin");
     assertThat(logger.infoMessages)
-        .anyMatch(
-            message ->
-                message.contains("could still be filtered")
-                    && message.contains("org.apache.maven.plugins:maven-surefire-plugin")
-                    && !message.contains("maven-checkstyle-plugin"));
+        .containsSubsequence(
+            "  could still be filtered:", "    org.apache.maven.plugins:maven-surefire-plugin");
     assertThat(logger.infoMessages)
-        .anyMatch(
-            message ->
-                message.contains("configured to be filtered")
-                    && message.contains("maven-checkstyle-plugin"));
+        .containsSubsequence("  configured to be filtered:", "    maven-checkstyle-plugin");
     assertThat(logger.infoMessages).anyMatch(message -> message.contains("-DfilterPlugins="));
   }
 

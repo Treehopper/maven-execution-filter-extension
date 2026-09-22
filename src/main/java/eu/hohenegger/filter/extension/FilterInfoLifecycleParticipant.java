@@ -85,20 +85,15 @@ public class FilterInfoLifecycleParticipant extends AbstractMavenLifecyclePartic
     logger.info(
         String.format(
             "maven-execution-filter-extension (-D%s):", PropertiesProvider.FILTER_INFO_SYS_PROP));
-    logger.info(
-        infoLine(
-            "filtered from this build",
-            describe(filteringModelProcessor.accumulatedRemovedPlugins())));
-    logger.info(
-        infoLine(
-            "could still be filtered",
-            describe(filteringModelProcessor.accumulatedRemainingPlugins())));
-    logger.info(
-        infoLine(
-            "configured to be filtered",
-            configuredDescriptors.isEmpty()
-                ? "none (disabled)"
-                : String.join(", ", configuredDescriptors)));
+    printPluginList(
+        "filtered from this build",
+        describe(filteringModelProcessor.accumulatedRemovedPlugins()),
+        "none");
+    printPluginList(
+        "could still be filtered",
+        describe(filteringModelProcessor.accumulatedRemainingPlugins()),
+        "none");
+    printPluginList("configured to be filtered", configuredDescriptors, "none (disabled)");
     logger.info(
         infoLine(
             "customize the list",
@@ -122,10 +117,22 @@ public class FilterInfoLifecycleParticipant extends AbstractMavenLifecyclePartic
     return String.format("  %-25s: %s", label, value);
   }
 
-  private static String describe(List<Plugin> plugins) {
-    if (plugins.isEmpty()) {
-      return "none";
+  /**
+   * An empty list prints {@code emptyText} inline with the label, same as {@link #infoLine}; a
+   * non-empty one instead prints the label as its own header line, followed by one plugin per
+   * indented line below - one long comma-separated line becomes unreadable once there is more than
+   * a handful of plugins.
+   */
+  private void printPluginList(String label, List<String> descriptors, String emptyText) {
+    if (descriptors.isEmpty()) {
+      logger.info(infoLine(label, emptyText));
+      return;
     }
+    logger.info(String.format("  %s:", label));
+    descriptors.forEach(descriptor -> logger.info("    " + descriptor));
+  }
+
+  private static List<String> describe(List<Plugin> plugins) {
     return plugins.stream()
         // the version is deliberately omitted: filtering matches on artifactId/groupId only
         // (see FilteringModelProcessor#matches), never on version, so the same plugin pinned to
@@ -138,6 +145,6 @@ public class FilterInfoLifecycleParticipant extends AbstractMavenLifecyclePartic
         // extension (e.g. one that injects a plugin of its own into the build, such as
         // maven-git-versioning-extension) multiplies that further - dedupe for a readable summary
         .distinct()
-        .collect(Collectors.joining(", "));
+        .collect(Collectors.toList());
   }
 }

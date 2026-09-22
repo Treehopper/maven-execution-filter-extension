@@ -150,18 +150,25 @@ mvn -DfilterInfo verify
 ```
 ```
 [INFO] maven-execution-filter-extension (-DfilterInfo):
-[INFO]   filtered from this build : org.apache.maven.plugins:maven-checkstyle-plugin
+[INFO]   filtered from this build:
+[INFO]     org.apache.maven.plugins:maven-checkstyle-plugin
+[INFO]     org.apache.maven.plugins:maven-pmd-plugin
 [INFO]   could still be filtered  : org.apache.maven.plugins:maven-surefire-plugin
-[INFO]   configured to be filtered: maven-checkstyle-plugin:org.apache.maven.plugins, ...
+[INFO]   configured to be filtered:
+[INFO]     maven-checkstyle-plugin:org.apache.maven.plugins
+[INFO]     maven-pmd-plugin:org.apache.maven.plugins
+[INFO]     ...
 [INFO]   customize the list       : -DfilterPlugins=artifactId[:groupId[:version]][,...]
 [INFO]   disable entirely         : -DfilterPlugins=
 [ERROR] Build cancelled: -DfilterInfo only prints this summary, it does not run the build - remove
 it to build normally.
 ```
-The plugin's version is deliberately left out here: filtering matches on artifactId/groupId only,
-never on version (see [Customizing the filtered plugins](#customizing-the-filtered-plugins)), so
-the same plugin pinned to a different version in each module of a reactor is genuinely one entry,
-not several.
+Each list prints one plugin per indented line rather than a single comma-separated line - a "none"
+result still prints inline with its label, as `could still be filtered` does above. The plugin's
+version is deliberately left out too: filtering matches on artifactId/groupId only, never on
+version (see [Customizing the filtered plugins](#customizing-the-filtered-plugins)), so the same
+plugin pinned to a different version in each module of a reactor is genuinely one entry, not
+several.
 
 `-DfilterInfo` is a dry run, not something you add alongside a real build: it cancels the build
 right after printing the summary, before any project actually executes, so the console shows

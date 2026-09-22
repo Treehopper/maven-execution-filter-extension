@@ -155,13 +155,17 @@ public class ExtensionIT {
     // -DfilterInfo is a dry run: it cancels the build right after printing, so this is expected
     // to fail rather than succeed - see FilterInfoLifecycleParticipant#afterProjectsRead.
     assertThat(result).isFailure();
+    // Each list prints as its own header line followed by one plugin per indented line below,
+    // rather than a single comma-separated line.
     assertThat(result)
         .out()
         .info()
         .contains("maven-execution-filter-extension (-DfilterInfo):")
-        .contains("  filtered from this build : org.apache.maven.plugins:maven-checkstyle-plugin")
+        .contains("  filtered from this build:")
+        .contains("    org.apache.maven.plugins:maven-checkstyle-plugin")
         .contains("  could still be filtered  : none")
-        .contains("  configured to be filtered: maven-checkstyle-plugin:org.apache.maven.plugins")
+        .contains("  configured to be filtered:")
+        .contains("    maven-checkstyle-plugin:org.apache.maven.plugins")
         .contains(
             "  customize the list       : -DfilterPlugins=artifactId[:groupId[:version]][,...]")
         .contains("  disable entirely         : -DfilterPlugins=");
