@@ -178,6 +178,18 @@ public class PropertiesProviderTest {
     assertThat(propertiesProvider.isFilterGeneratorsRequested()).isTrue();
   }
 
+  /**
+   * swagger-codegen-maven-plugin is published under at least two different groupIds ({@code
+   * io.swagger.codegen.v3}, the maintained fork, and the older, largely abandoned {@code
+   * io.swagger}) - a hardcoded groupId here previously matched only one of them, silently failing
+   * to filter the other. Locks in matching by artifactId alone instead.
+   */
+  @Test
+  public void swaggerCodegenDescriptorHasNoHardcodedGroupIdSoItMatchesEitherFork() {
+    assertThat(PropertiesProvider.GENERATOR_PLUGIN_DESCRIPTORS)
+        .contains("swagger-codegen-maven-plugin");
+  }
+
   @Test
   public void generatorPluginsAreNotFilteredByDefault() {
     assertThat(propertiesProvider.getPluginDescriptors())

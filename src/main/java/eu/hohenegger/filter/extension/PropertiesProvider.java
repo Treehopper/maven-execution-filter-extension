@@ -89,12 +89,13 @@ public class PropertiesProvider {
   /**
    * Common code generator plugins, only filtered when {@value #FILTER_GENERATORS_SYS_PROP} is set -
    * see that constant's javadoc for why these are opt-in rather than part of {@link
-   * #DEFAULT_FILTERED_PLUGIN_DESCRIPTORS}.
+   * #DEFAULT_FILTERED_PLUGIN_DESCRIPTORS}. {@code swagger-codegen-maven-plugin} deliberately omits
+   * a groupId - it is published under at least two ({@code io.swagger.codegen.v3}, the maintained
+   * fork, and the older, largely abandoned {@code io.swagger}), and matching on artifactId alone
+   * covers both without needing to track every fork.
    */
   static final List<String> GENERATOR_PLUGIN_DESCRIPTORS =
-      List.of(
-          "openapi-generator-maven-plugin:org.openapitools",
-          "swagger-codegen-maven-plugin:io.swagger.codegen.v3");
+      List.of("openapi-generator-maven-plugin:org.openapitools", "swagger-codegen-maven-plugin");
 
   private final Logger logger;
 
