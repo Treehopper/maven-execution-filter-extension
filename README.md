@@ -11,8 +11,8 @@ The intended purpose of this extension is to improve the developer UX when worki
 Skip-options have to be found, and applied correctly in your IDE, CLI, etc.
 If they are applied correctly, the plugins will still be downloaded, started, and pollute logs.
 This extension instead removes the plugin declaration from the in-memory Maven model before it is
-resolved, so the plugin is never downloaded, never started, and never gets a chance to log anything
-- for plugins declared directly in `<build><plugins>`, inherited from a parent POM, or declared
+resolved, so the plugin is never downloaded, never started, and never gets a chance to log anything,
+whether it's declared directly in `<build><plugins>`, inherited from a parent POM, or declared
 inside an (active) `<profile>`.
 
 ## Default behaviour
@@ -201,15 +201,15 @@ mvn -DfilterPlugins= verify
 
 ## Compatibility with mvnd (the Maven Daemon)
 The extension re-reads `filterPlugins` and `.mvn/filterPlugins.properties` on every build rather than
-caching either once, so it correctly picks up a different value - or a just-saved edit to the file
-- on the next `mvnd` invocation even when the daemon reuses the same warm JVM (and thus the same
+caching either once, so it correctly picks up a different value, or a just-saved edit to the file,
+on the next `mvnd` invocation even when the daemon reuses the same warm JVM (and thus the same
 extension component instance) - no need to run `mvnd --stop` in between. `-DfilterInfo`'s
 once-per-build summary (see above) is also safe under daemon reuse: it is printed by a Maven
 lifecycle participant hook that fires exactly once per build (with a fresh `MavenSession` each
 time, even when the daemon reuses the same component instance), rather than by a flag on the model
 reader itself, so it reliably prints again on the next build rather than only the first one the
-daemon ever served. (Resolving the extension itself from JitPack under `mvnd` is a separate matter
-- see the note on core extension resolution above.)
+daemon ever served. (Resolving the extension itself from JitPack under `mvnd` is a separate matter;
+see the note on core extension resolution above.)
 
 ## Compatibility with other core extensions (e.g. maven-git-versioning-extension)
 Maven allows exactly one core extension to take over reading POMs from disk - the mechanism every
