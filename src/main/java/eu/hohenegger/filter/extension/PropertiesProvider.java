@@ -70,7 +70,10 @@ public class PropertiesProvider {
           "arch-unit-maven-plugin:com.societegenerale.commons",
           "sortpom-maven-plugin:com.github.ekryd.sortpom",
           "maven-source-plugin:org.apache.maven.plugins",
-          "maven-javadoc-plugin:org.apache.maven.plugins");
+          "maven-javadoc-plugin:org.apache.maven.plugins",
+          "cyclonedx-maven-plugin:org.cyclonedx",
+          "sonar-maven-plugin:org.sonarsource.scanner.maven",
+          "jib-maven-plugin:com.google.cloud.tools");
 
   private final Logger logger;
 

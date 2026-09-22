@@ -17,8 +17,8 @@ inside an (active) `<profile>`.
 
 ## Default behaviour
 Out of the box, with no configuration at all, the extension removes the following widely-used
-checker/reporting plugins, plus the plugins that build release artifacts you don't need for local
-development, from every build:
+checker/reporting plugins, plus the plugins that build release/deployment artifacts you don't need
+for local development, from every build:
 - `maven-checkstyle-plugin`
 - `maven-pmd-plugin`
 - `spotbugs-maven-plugin`
@@ -26,14 +26,19 @@ development, from every build:
 - `jacoco-maven-plugin`
 - `arch-unit-maven-plugin`
 - `sortpom-maven-plugin`
+- `sonar-maven-plugin`
 - `maven-source-plugin`
 - `maven-javadoc-plugin`
+- `cyclonedx-maven-plugin`
+- `jib-maven-plugin`
 
-The checker/reporting plugins are exactly the kind already enforced by your CI pipeline against a
+The checker/reporting plugins (including `sonar-maven-plugin`, which uploads its analysis to a
+SonarQube/SonarCloud server) are exactly the kind already enforced by your CI pipeline against a
 central repository, so re-running (and re-reading the same warnings from) them on every local
-build is mostly wasted time. `maven-source-plugin` and `maven-javadoc-plugin` only matter when
-publishing a release, so there is no reason to build sources/javadoc jars on every local build
-either.
+build is mostly wasted time. `maven-source-plugin`, `maven-javadoc-plugin` and
+`cyclonedx-maven-plugin` (SBOM generation) only matter when publishing a release, and
+`jib-maven-plugin` only matters when actually building/pushing a container image, so there is no
+reason to do any of that on every local build either.
 
 The first time the extension runs in a project, it writes this default list to `.mvn/filterPlugins.properties`
 (see [Customizing the filtered plugins](#customizing-the-filtered-plugins)) - edit that file to
