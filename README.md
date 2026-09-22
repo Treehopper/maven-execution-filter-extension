@@ -123,6 +123,21 @@ re-declares them for configuration purposes - they're injected later, after this
 model-reading hook has already run, so there's nothing in the raw model to remove. To skip test
 execution, use Maven's own `-DskipTests` (or `-Dmaven.test.skip=true`) instead.
 
+## Filtering code generator plugins
+Code generator plugins (e.g. `openapi-generator-maven-plugin`, `swagger-codegen-maven-plugin`) are
+**not** part of the default list above, and adding them via `filterPlugins` isn't recommended
+either: unlike a checker or a release-artifact step, removing a generator can break the build
+outright if the sources it generates are needed to compile. Add `-DfilterGenerators` to a build
+that doesn't need the generated code regenerated - e.g. it's already been generated and committed,
+or this particular build doesn't touch that module - to filter them anyway:
+```
+mvn -DfilterGenerators verify
+```
+This is additive: it filters the built-in list of generator plugins on top of whatever
+`filterPlugins`/the persisted config file already filters, even when that other list is empty or
+explicitly disabled (`-DfilterPlugins=`). There is currently no way to customize *which* generator
+plugins this flag targets - if you need that, use `filterPlugins`/the config file directly instead.
+
 ## Seeing what's being filtered
 Add `-DfilterInfo` to any build to print, once at the start: exactly which plugins were removed
 from that build, which of the plugins still declared in it you could add to the filter too, the

@@ -28,6 +28,7 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
@@ -47,6 +48,16 @@ public class PropertiesProvider {
    * disable it (e.g. {@code -DfilterInfo}).
    */
   public static final String FILTER_INFO_SYS_PROP = "filterInfo";
+
+  /**
+   * Opt-in flag (default: disabled) that additionally filters {@link #GENERATOR_PLUGIN_DESCRIPTORS}
+   * out of the build, e.g. {@code -DfilterGenerators}. Unlike {@value #FILTER_PLUGINS_SYS_PROP},
+   * code generator plugins are never filtered by default: removing one can break the build outright
+   * if the sources it generates are needed to compile, so this is only safe to enable for a build
+   * that doesn't need the generated code regenerated (e.g. it's already been generated and
+   * committed, or this build doesn't touch that module).
+   */
+  public static final String FILTER_GENERATORS_SYS_PROP = "filterGenerators";
 
   /**
    * Name of the persisted, user-editable config file inside {@code .mvn/} - a standard {@code
@@ -75,6 +86,16 @@ public class PropertiesProvider {
           "sonar-maven-plugin:org.sonarsource.scanner.maven",
           "jib-maven-plugin:com.google.cloud.tools");
 
+  /**
+   * Common code generator plugins, only filtered when {@value #FILTER_GENERATORS_SYS_PROP} is set -
+   * see that constant's javadoc for why these are opt-in rather than part of {@link
+   * #DEFAULT_FILTERED_PLUGIN_DESCRIPTORS}.
+   */
+  static final List<String> GENERATOR_PLUGIN_DESCRIPTORS =
+      List.of(
+          "openapi-generator-maven-plugin:org.openapitools",
+          "swagger-codegen-maven-plugin:io.swagger.codegen.v3");
+
   private final Logger logger;
 
   @Inject
@@ -95,17 +116,33 @@ public class PropertiesProvider {
    * #DEFAULT_FILTERED_PLUGIN_DESCRIPTORS}, which are also returned for that build; from then on,
    * it's a plain {@code .properties} file meant to be edited directly - commit it so the whole team
    * shares the same local dev experience.
+   *
+   * <p>Either way, if {@value #FILTER_GENERATORS_SYS_PROP} is also set, {@link
+   * #GENERATOR_PLUGIN_DESCRIPTORS} are appended on top - independently of whichever of the above
+   * two sources produced the rest of the list, including when {@value #FILTER_PLUGINS_SYS_PROP} is
+   * blank.
    */
   public List<String> getPluginDescriptors() {
+    var descriptors = new ArrayList<String>();
     if (System.getProperties().containsKey(FILTER_PLUGINS_SYS_PROP)) {
-      return parseCommaSeparated(System.getProperty(FILTER_PLUGINS_SYS_PROP, ""));
+      descriptors.addAll(parseCommaSeparated(System.getProperty(FILTER_PLUGINS_SYS_PROP, "")));
+    } else {
+      descriptors.addAll(readOrInitializeConfigFile());
     }
-    return readOrInitializeConfigFile();
+    if (isFilterGeneratorsRequested()) {
+      descriptors.addAll(GENERATOR_PLUGIN_DESCRIPTORS);
+    }
+    return descriptors;
   }
 
   /** Whether the {@value #FILTER_INFO_SYS_PROP} flag is set for this build. */
   public boolean isFilterInfoRequested() {
     return Boolean.parseBoolean(System.getProperty(FILTER_INFO_SYS_PROP, "false"));
+  }
+
+  /** Whether the {@value #FILTER_GENERATORS_SYS_PROP} flag is set for this build. */
+  public boolean isFilterGeneratorsRequested() {
+    return Boolean.parseBoolean(System.getProperty(FILTER_GENERATORS_SYS_PROP, "false"));
   }
 
   private static List<String> parseCommaSeparated(String value) {

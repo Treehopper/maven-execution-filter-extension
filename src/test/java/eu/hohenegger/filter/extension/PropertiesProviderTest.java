@@ -20,6 +20,7 @@
 package eu.hohenegger.filter.extension;
 
 import static eu.hohenegger.filter.extension.PropertiesProvider.CONFIG_FILE_NAME;
+import static eu.hohenegger.filter.extension.PropertiesProvider.FILTER_GENERATORS_SYS_PROP;
 import static eu.hohenegger.filter.extension.PropertiesProvider.FILTER_INFO_SYS_PROP;
 import static eu.hohenegger.filter.extension.PropertiesProvider.FILTER_PLUGINS_SYS_PROP;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -63,6 +64,7 @@ public class PropertiesProviderTest {
   public void tearDown() {
     System.getProperties().remove(FILTER_PLUGINS_SYS_PROP);
     System.getProperties().remove(FILTER_INFO_SYS_PROP);
+    System.getProperties().remove(FILTER_GENERATORS_SYS_PROP);
     if (originalMultiModuleProjectDirectory == null) {
       System.getProperties().remove(MULTI_MODULE_PROJECT_DIRECTORY_SYS_PROP);
     } else {
@@ -162,5 +164,41 @@ public class PropertiesProviderTest {
     System.setProperty(FILTER_INFO_SYS_PROP, "false");
 
     assertThat(propertiesProvider.isFilterInfoRequested()).isFalse();
+  }
+
+  @Test
+  public void filterGeneratorsIsNotRequestedByDefault() {
+    assertThat(propertiesProvider.isFilterGeneratorsRequested()).isFalse();
+  }
+
+  @Test
+  public void filterGeneratorsIsRequestedWhenFlagIsBare() {
+    System.setProperty(FILTER_GENERATORS_SYS_PROP, "true");
+
+    assertThat(propertiesProvider.isFilterGeneratorsRequested()).isTrue();
+  }
+
+  @Test
+  public void generatorPluginsAreNotFilteredByDefault() {
+    assertThat(propertiesProvider.getPluginDescriptors())
+        .doesNotContainAnyElementsOf(PropertiesProvider.GENERATOR_PLUGIN_DESCRIPTORS);
+  }
+
+  @Test
+  public void filterGeneratorsAppendsGeneratorPluginsOnTopOfTheDefaultList() {
+    System.setProperty(FILTER_GENERATORS_SYS_PROP, "true");
+
+    assertThat(propertiesProvider.getPluginDescriptors())
+        .containsAll(PropertiesProvider.DEFAULT_FILTERED_PLUGIN_DESCRIPTORS)
+        .containsAll(PropertiesProvider.GENERATOR_PLUGIN_DESCRIPTORS);
+  }
+
+  @Test
+  public void filterGeneratorsAppendsGeneratorPluginsEvenWhenFilterPluginsIsBlank() {
+    System.setProperty(FILTER_PLUGINS_SYS_PROP, " ");
+    System.setProperty(FILTER_GENERATORS_SYS_PROP, "true");
+
+    assertThat(propertiesProvider.getPluginDescriptors())
+        .isEqualTo(PropertiesProvider.GENERATOR_PLUGIN_DESCRIPTORS);
   }
 }

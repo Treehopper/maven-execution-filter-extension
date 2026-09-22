@@ -21,6 +21,7 @@ package eu.hohenegger.filter.extension;
 
 import static com.soebes.itf.extension.assertj.MavenITAssertions.assertThat;
 import static com.soebes.itf.jupiter.extension.MavenCLIOptions.*;
+import static eu.hohenegger.filter.extension.PropertiesProvider.FILTER_GENERATORS_SYS_PROP;
 import static eu.hohenegger.filter.extension.PropertiesProvider.FILTER_INFO_SYS_PROP;
 import static eu.hohenegger.filter.extension.PropertiesProvider.FILTER_PLUGINS_SYS_PROP;
 
@@ -198,6 +199,34 @@ public class ExtensionIT {
         .out()
         .info()
         .contains("Plugin [org.apache.maven.plugins:maven-checkstyle-plugin:3.1.2] filtered");
+  }
+
+  /**
+   * Code generator plugins are never filtered by default (see {@link
+   * PropertiesProvider#FILTER_GENERATORS_SYS_PROP}'s javadoc for why) - this fixture's
+   * openapi-generator-maven-plugin has no {@code inputSpec} configured, so it fails with its own
+   * validation error the moment it actually runs, proving it wasn't filtered.
+   */
+  @MavenTest
+  @MavenOption(NO_TRANSFER_PROGRESS)
+  void generator_plugin_not_filtered_by_default(MavenExecutionResult result) {
+    assertThat(result).isFailure();
+    assertThat(result)
+        .out()
+        .info()
+        .contains("--- openapi-generator:7.25.0:generate (default) @ bar ---");
+  }
+
+  /** The flip side of {@link #generator_plugin_not_filtered_by_default}: opted in via the flag. */
+  @MavenTest
+  @MavenOption(NO_TRANSFER_PROGRESS)
+  @SystemProperty(value = FILTER_GENERATORS_SYS_PROP, content = "true")
+  void filter_generators(MavenExecutionResult result) {
+    assertThat(result).isSuccessful();
+    assertThat(result)
+        .out()
+        .info()
+        .contains("Plugin [org.openapitools:openapi-generator-maven-plugin:7.25.0] filtered");
   }
 
   /**
