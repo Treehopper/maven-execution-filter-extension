@@ -157,8 +157,7 @@ public class ExtensionIT {
         .out()
         .info()
         .contains("maven-execution-filter-extension (-DfilterInfo):")
-        .contains(
-            "  filtered from this build : org.apache.maven.plugins:maven-checkstyle-plugin:3.1.2")
+        .contains("  filtered from this build : org.apache.maven.plugins:maven-checkstyle-plugin")
         .contains("  could still be filtered  : none")
         .contains("  configured to be filtered: maven-checkstyle-plugin:org.apache.maven.plugins")
         .contains(

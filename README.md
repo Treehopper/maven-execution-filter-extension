@@ -150,12 +150,16 @@ mvn -DfilterInfo verify
 ```
 ```
 [INFO] maven-execution-filter-extension (-DfilterInfo):
-[INFO]   filtered from this build : org.apache.maven.plugins:maven-checkstyle-plugin:3.1.2
-[INFO]   could still be filtered  : org.apache.maven.plugins:maven-surefire-plugin:3.6.0
+[INFO]   filtered from this build : org.apache.maven.plugins:maven-checkstyle-plugin
+[INFO]   could still be filtered  : org.apache.maven.plugins:maven-surefire-plugin
 [INFO]   configured to be filtered: maven-checkstyle-plugin:org.apache.maven.plugins, ...
 [INFO]   customize the list       : -DfilterPlugins=artifactId[:groupId[:version]][,...]
 [INFO]   disable entirely         : -DfilterPlugins=
 ```
+The plugin's version is deliberately left out here: filtering matches on artifactId/groupId only,
+never on version (see [Customizing the filtered plugins](#customizing-the-filtered-plugins)), so
+the same plugin pinned to a different version in each module of a reactor is genuinely one entry,
+not several.
 
 ## Disabling the extension (e.g. for CI)
 Since `.mvn/filterPlugins.properties` (like `.mvn/jvm.config`) is typically committed to the repository,

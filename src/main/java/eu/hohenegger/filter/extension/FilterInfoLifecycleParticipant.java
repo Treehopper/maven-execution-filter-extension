@@ -114,10 +114,12 @@ public class FilterInfoLifecycleParticipant extends AbstractMavenLifecyclePartic
       return "none";
     }
     return plugins.stream()
-        .map(
-            plugin ->
-                String.format(
-                    "%s:%s:%s", plugin.getGroupId(), plugin.getArtifactId(), plugin.getVersion()))
+        // the version is deliberately omitted: filtering matches on artifactId/groupId only
+        // (see FilteringModelProcessor#matches), never on version, so the same plugin pinned to
+        // a different version in each module of a reactor is genuinely the same entry here, not
+        // several - showing the version would only make that look like more plugins than there
+        // actually are
+        .map(plugin -> String.format("%s:%s", plugin.getGroupId(), plugin.getArtifactId()))
         // a plugin's own POM is commonly read more than once per build (see
         // FilteringModelProcessor's javadoc), and a delegate ModelProcessor from another core
         // extension (e.g. one that injects a plugin of its own into the build, such as
