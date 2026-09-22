@@ -133,9 +133,13 @@ public class FilteringModelProcessor extends DefaultModelProcessor {
     var segments = pluginDescriptor.split(":");
     var plugin = new Plugin();
     plugin.setArtifactId(segments[0]);
-    if (segments.length > 1) {
-      plugin.setGroupId(segments[1]);
-    }
+    // Plugin's own no-arg constructor defaults groupId to "org.apache.maven.plugins" (see its
+    // generated source) rather than leaving it null - harmless for a plugin actually being
+    // filtered (matches() only ever reads a *filter descriptor's* groupId, never this one), but
+    // it would silently defeat "no groupId means match any groupId" below if left as-is: a
+    // descriptor with no groupId segment would end up looking like it specified
+    // org.apache.maven.plugins after all, matching only that one groupId instead of any.
+    plugin.setGroupId(segments.length > 1 ? segments[1] : null);
     if (segments.length > 2) {
       plugin.setVersion(segments[2]);
     }

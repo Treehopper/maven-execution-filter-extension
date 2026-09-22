@@ -84,6 +84,29 @@ public class FilteringModelProcessorTest {
     assertThat(filteredModel.getBuild().getPlugins()).isEmpty();
   }
 
+  /**
+   * Regression test: {@link org.apache.maven.model.Plugin}'s own no-arg constructor defaults
+   * groupId to "org.apache.maven.plugins" rather than leaving it null (see {@code
+   * FilteringModelProcessor#loadPluginToBeFiltered}'s javadoc) - a plugin declared under any
+   * *other* groupId is exactly the case that would have silently failed to match an artifactId-only
+   * descriptor if that default had leaked through uncorrected. The other artifactId-only test above
+   * uses org.apache.maven.plugins for the declared plugin too, which would not have caught this -
+   * both sides of the comparison would happen to agree by accident.
+   */
+  @Test
+  public void filtersByArtifactIdAloneEvenWhenGroupIdIsNotOrgApacheMavenPlugins() {
+    var modelProcessor = processorFor("swagger-codegen-maven-plugin");
+
+    var model = new Model();
+    var build = new Build();
+    build.addPlugin(plugin("io.swagger.codegen.v3", "swagger-codegen-maven-plugin"));
+    model.setBuild(build);
+
+    var filteredModel = modelProcessor.filter(model);
+
+    assertThat(filteredModel.getBuild().getPlugins()).isEmpty();
+  }
+
   @Test
   public void filtersPluginDeclaredWithoutExplicitGroupIdAsMavenDefaultGroupId() {
     var modelProcessor = processorFor("maven-checkstyle-plugin:org.apache.maven.plugins");
