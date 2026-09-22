@@ -249,6 +249,11 @@ public class ExtensionIT {
   @MavenTest
   @MavenOption(NO_TRANSFER_PROGRESS)
   @SystemProperty(value = FILTER_INFO_SYS_PROP, content = "true")
+  // maven-git-versioning-extension prefers GitHub Actions' own GITHUB_REF environment variable
+  // over the fixture's local .git branch when running there, which would report the CI
+  // checkout's actual branch (e.g. main) instead of "it-test" - git.branch is that extension's
+  // own highest-priority override, taking precedence over its GITHUB_REF detection.
+  @SystemProperty(value = "git.branch", content = "it-test")
   void coexists_with_other_core_extension(MavenExecutionResult result) {
     // -DfilterInfo cancels the build right after printing (see
     // FilterInfoLifecycleParticipant#afterProjectsRead) - both the version rewrite and the
@@ -278,6 +283,8 @@ public class ExtensionIT {
    */
   @MavenTest
   @MavenOption(NO_TRANSFER_PROGRESS)
+  // see coexists_with_other_core_extension's comment on this same property.
+  @SystemProperty(value = "git.branch", content = "it-test")
   void loses_to_other_core_extension_without_delegation_support(MavenExecutionResult result) {
     assertThat(result).isFailure();
     assertThat(result).out().info().anyMatch(line -> line.contains("it-test-SNAPSHOT"));
