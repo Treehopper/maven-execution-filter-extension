@@ -171,6 +171,20 @@ delegates the actual disk read to one of them before applying its own filtering 
 the two ends up winning the lookup, the other one's logic still runs as part of the chain. This
 requires no configuration; it is automatic whenever another core extension is present.
 
+### Compatibility matrix
+
+Verified by hand; combinations not listed (other Maven versions, other
+maven-git-versioning-extension versions) are simply untested, not known to be broken.
+
+| Maven | maven-git-versioning-extension | Result |
+| --- | --- | --- |
+| 3.8.3  | - (this extension alone) | Works |
+| 3.9.16 | - (this extension alone) | Works |
+| 3.8.3  | 7.3.0 | Works |
+| 3.9.16 | 7.3.0 | Works |
+| 3.8.3  | 9.12.0 / 9.12.1 (9.7.0+) | Fails - upstream bug, see below |
+| 3.9.16 | 9.12.0 / 9.12.1 (9.7.0+) | Fails - upstream bug, see below |
+
 This only works if the *other* extension is new enough to have equivalent delegation logic of its
 own, for the case where it wins the lookup instead. For maven-git-versioning-extension specifically:
 - **7.x and later that predate 9.7.0**: has no concept of another `ModelProcessor` at all, so it
