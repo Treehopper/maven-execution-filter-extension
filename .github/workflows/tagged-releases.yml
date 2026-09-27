@@ -10,7 +10,22 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+    - uses: actions/checkout@v4
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+    - name: Build the jar
+      # -DskipTests: this workflow only packages an already-tested commit for release, it
+      # doesn't re-verify it - see the main CI workflow (ci.yml) for that.
+      run: mvn --batch-mode -Dlicense.skipDownloadLicenses=true -DskipTests clean package
+    - name: Package the jar into a 7z archive
+      # .mvn/maven.config's revision is always bumped to match the tag before tagging, so the
+      # tag name (GITHUB_REF_NAME here) is also the exact version the jar was just built with.
+      run: 7z a "maven-execution-filter-extension-${GITHUB_REF_NAME}.7z" "target/maven-execution-filter-extension-${GITHUB_REF_NAME}.jar"
     - uses: ncipollo/release-action@v1
       with:
         prerelease: false
         token: ${{ secrets.GITHUB_TOKEN }}
+        artifacts: "maven-execution-filter-extension-*.7z"
