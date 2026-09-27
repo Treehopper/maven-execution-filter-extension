@@ -19,7 +19,13 @@ jobs:
     - name: Build the jar
       # -DskipTests: this workflow only packages an already-tested commit for release, it
       # doesn't re-verify it - see the main CI workflow (ci.yml) for that.
-      run: mvn --batch-mode -Dlicense.skipDownloadLicenses=true -DskipTests clean package
+      #
+      # Deliberately no "clean" goal here (a fresh checkout doesn't need it anyway): spotless
+      # (code formatting) is bound to the clean phase specifically so it never runs as part of
+      # an ordinary build - google-java-format needs JVM flags this build doesn't set to run on
+      # JDK 16+, so invoking clean here would fail the same way running "mvn clean" locally
+      # would, for the same reason ci.yml's own `mvn verify` never passes "clean" either.
+      run: mvn --batch-mode -Dlicense.skipDownloadLicenses=true -DskipTests package
     - name: Package the jar into a 7z archive
       # .mvn/maven.config's revision is always bumped to match the tag before tagging, so the
       # tag name (GITHUB_REF_NAME here) is also the exact version the jar was just built with.
