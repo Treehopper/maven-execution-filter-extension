@@ -53,7 +53,7 @@ In your `${baseDir}/.mvn/extensions.xml` (requires Maven 3.3.1):
     <extension>
         <groupId>com.github.Treehopper</groupId>
         <artifactId>maven-execution-filter-extension</artifactId>
-        <version>1.9.0-alpha</version>
+        <version>2.0.0-alpha</version>
     </extension>
 </extensions>
 ```
@@ -114,16 +114,14 @@ groupId or version). The `artifactId` must match exactly - `surefire` will not m
 `maven-surefire-plugin`.
 
 ### What can and can't be filtered
-This only works for plugins **explicitly declared** in `<build><plugins>` - directly, inherited
-from a parent POM, or inside an active `<profile>` - which is true of `maven-checkstyle-plugin`,
-`maven-pmd-plugin` and the rest of the default list, since they only do anything once explicitly
-bound to a phase. It does **not** work for plugins bound purely through Maven's own default
-lifecycle mapping for your packaging type (e.g. `maven-surefire-plugin`, `maven-compiler-plugin`,
-`maven-resources-plugin`, `maven-jar-plugin`, `maven-install-plugin`, `maven-deploy-plugin` for
-`jar` packaging), since those never appear in `<build><plugins>` at all unless a project
-re-declares them for configuration purposes - they're injected later, after this extension's
-model-reading hook has already run, so there's nothing in the raw model to remove. To skip test
-execution, use Maven's own `-DskipTests` (or `-Dmaven.test.skip=true`) instead.
+This works for any plugin present in a project's effective `<build><plugins>` by the time Maven has
+fully read the reactor - directly declared, inherited from a parent POM, inside an active
+`<profile>`, **or bound purely through Maven's own default lifecycle mapping** for your packaging
+type (e.g. `maven-surefire-plugin`, `maven-compiler-plugin`, `maven-resources-plugin` for `jar`
+packaging), even when a project never mentions that plugin at all. To skip test execution
+specifically, Maven's own `-DskipTests` (or `-Dmaven.test.skip=true`) is still simpler than
+filtering `maven-surefire-plugin` outright, since it avoids fully removing the plugin (and thus,
+for `-DfilterInfo` purposes, still reports it as present).
 
 ## Filtering code generator plugins
 Code generator plugins (e.g. `openapi-generator-maven-plugin`, `swagger-codegen-maven-plugin`) are
@@ -168,7 +166,9 @@ mvn -DfilterInfo verify
 [INFO]   filtered from this build:
 [INFO]     org.apache.maven.plugins:maven-checkstyle-plugin
 [INFO]     org.apache.maven.plugins:maven-pmd-plugin
-[INFO]   could still be filtered  : org.apache.maven.plugins:maven-surefire-plugin
+[INFO]   could still be filtered:
+[INFO]     org.apache.maven.plugins:maven-surefire-plugin
+[INFO]     org.apache.maven.plugins:maven-compiler-plugin
 [INFO]   configured to be filtered:
 [INFO]     maven-checkstyle-plugin:org.apache.maven.plugins
 [INFO]     maven-pmd-plugin:org.apache.maven.plugins
@@ -179,11 +179,14 @@ mvn -DfilterInfo verify
 it to build normally.
 ```
 Each list prints one plugin per indented line rather than a single comma-separated line - a "none"
-result still prints inline with its label, as `could still be filtered` does above. The plugin's
-version is deliberately left out too: filtering matches on artifactId/groupId only, never on
-version (see [Customizing the filtered plugins](#customizing-the-filtered-plugins)), so the same
-plugin pinned to a different version in each module of a reactor is genuinely one entry, not
-several.
+result still prints inline with its label instead (e.g. `  configured to be filtered: none
+(disabled)` when `filterPlugins` is blank). Note that `could still be filtered` now also includes
+default-lifecycle-bound plugins like `maven-surefire-plugin` and `maven-compiler-plugin` (see
+[What can and can't be filtered](#what-can-and-cant-be-filtered)), not just explicitly declared
+ones. The plugin's version is deliberately left out too: filtering matches on artifactId/groupId
+only, never on version (see [Customizing the filtered plugins](#customizing-the-filtered-plugins)),
+so the same plugin pinned to a different version in each module of a reactor is genuinely one
+entry, not several.
 
 `-DfilterInfo` is a dry run, not something you add alongside a real build: it cancels the build
 right after printing the summary, before any project actually executes, so the console shows
@@ -212,56 +215,26 @@ daemon ever served. (Resolving the extension itself from JitPack under `mvnd` is
 see the note on core extension resolution above.)
 
 ## Compatibility with other core extensions (e.g. maven-git-versioning-extension)
-Maven allows exactly one core extension to take over reading POMs from disk - the mechanism every
-such extension (including this one) uses to hook in is a single, unqualified lookup that can only
-resolve to one implementation. If another installed core extension does the same thing - the
-best-known example being [maven-git-versioning-extension](https://github.com/qoomon/maven-git-versioning-extension),
-which rewrites `${project.version}` based on the current git branch/tag - only one of the two can
-win that lookup, determined by extension load order rather than anything either extension's author
-controls.
+Plugin filtering happens in a Maven lifecycle participant hook (`afterProjectsRead`), not by taking
+over POM reading from disk. Maven invokes every registered lifecycle participant from every
+installed core extension, so this extension coexists with any number of others - including
+[maven-git-versioning-extension](https://github.com/qoomon/maven-git-versioning-extension), which
+rewrites `${project.version}` based on the current git branch/tag - regardless of declaration order
+in `.mvn/extensions.xml`, and with no configuration needed on either side. Verified by hand with
+maven-git-versioning-extension 7.3.0 and 9.12.x, on Maven 3.8.3 and 3.9.16, in both declaration
+orders, and under `mvnd` daemon reuse.
 
-To still let both work together, this extension looks up every other registered POM reader and
-delegates the actual disk read to one of them before applying its own filtering - so whichever of
-the two ends up winning the lookup, the other one's logic still runs as part of the chain. This
-requires no configuration; it is automatic whenever another core extension is present.
-
-### Compatibility matrix
-
-Verified by hand; combinations not listed (other Maven versions, other
-maven-git-versioning-extension versions) are simply untested, not known to be broken.
-
-| Maven | maven-git-versioning-extension | Result |
-| --- | --- | --- |
-| 3.8.3  | - (this extension alone) | Works |
-| 3.9.16 | - (this extension alone) | Works |
-| 3.8.3  | 7.3.0 | Works |
-| 3.9.16 | 7.3.0 | Works |
-| 3.8.3  | 9.12.0 / 9.12.1 (9.7.0+) | Fails - upstream bug, see below |
-| 3.9.16 | 9.12.0 / 9.12.1 (9.7.0+) | Fails - upstream bug, see below |
-
-This only works if the *other* extension is new enough to have equivalent delegation logic of its
-own, for the case where it wins the lookup instead. For maven-git-versioning-extension specifically:
-- **7.x and later that predate 9.7.0**: has no concept of another `ModelProcessor` at all, so it
-  either wins the lookup outright (and this extension never runs, with no error) or loses it (in
-  which case this extension's delegation reaches it correctly, and both extensions work as
-  expected) - verified with 7.3.0.
-- **9.7.0+**: added its own delegation logic, but its plugin-version-rewriting step assumes the
-  plugin list is unchanged before and after delegating - an assumption this extension's filtering
-  breaks the moment it actually removes a plugin, regardless of whether the project is
-  single-module or a multi-module reactor. This crashes the build entirely with `Internal error:
-  java.lang.IllegalArgumentException: Collections sizes are not equals` inside
-  `GitVersioningModelProcessor.updatePluginVersions`. This is a bug in that extension's own
-  reconciliation logic, not something fixable from here; if you hit it, consider reporting it
-  upstream, or pinning to a pre-9.7.0 release in the meantime.
+An earlier version of this extension worked by overriding `ModelProcessor` instead, the mechanism
+`maven-git-versioning-extension` (and any extension that rewrites POMs as Maven reads them) also
+uses. Maven only lets *one* `ModelProcessor` implementation win that single, unqualified lookup, so
+two such extensions installed together were in direct, order-dependent competition for that one
+slot - a real limitation of that older approach, not of the lifecycle-participant approach used now.
+If you're using a version of this extension old enough to still take that approach, upgrade instead
+of working around it here.
 
 Separately, on Maven 3.8.x and earlier: see the note on the Java 11 bytecode target below - an
-older extension build compiled for Java 15+ is invisible to *any* other core extension's own
-delegation search on those Maven versions (and to Maven's own core-extension lookup), regardless
-of which extension it is combined with.
-
-If you use a different extension that also reads/rewrites POMs and see it stop working (or this one
-stop working) once both are installed, this is almost certainly the same class of conflict - check
-whether it delegates to other `ModelProcessor` implementations before assuming otherwise.
+extension build compiled for Java 15+ is invisible to Maven's own core-extension discovery on those
+Maven versions, regardless of which mechanism it uses or which other extension it is combined with.
 
 # Development
 Building this project requires JDK 17+, but the compiled classes target Java 11 (see

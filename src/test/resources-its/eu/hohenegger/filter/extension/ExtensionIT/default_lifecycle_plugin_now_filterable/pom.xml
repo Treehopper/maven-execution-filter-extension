@@ -8,11 +8,13 @@
 
     <!--
      ! Deliberately declares no <build><plugins> at all: maven-surefire-plugin is bound purely
-     ! through Maven's default lifecycle mapping for jar packaging, so it never appears in the raw
-     ! model this extension's ModelProcessor reads - filterPlugins cannot remove it. JUnit 4 (not 5)
-     ! is used here specifically so the test runs under whatever surefire version Maven's own
-     ! default lifecycle binding implies, without needing an explicit, filterable <plugin> entry
-     ! just to pin a JUnit-5-capable version.
+     ! through Maven's default lifecycle mapping for jar packaging, never explicitly declared here.
+     ! Filtering now happens in afterProjectsRead, after Maven has already injected default
+     ! lifecycle plugin bindings into the project's effective model - so unlike the old
+     ! ModelProcessor-based approach, filterPlugins can remove this one too. JUnit 4 (not 5) is
+     ! used here specifically so the test runs under whatever surefire version Maven's own default
+     ! lifecycle binding implies, without needing an explicit, filterable <plugin> entry just to
+     ! pin a JUnit-5-capable version.
     -->
     <dependencies>
         <dependency>
