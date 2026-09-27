@@ -54,10 +54,11 @@ resolution. That sidesteps the JitPack-resolution problem the per-project option
 there for details) - you only need the jar file itself, once, and every build run with that Maven
 installation picks it up from then on, with nothing to add to the project itself.
 
-There's no pre-built jar attached to a
-[release](https://github.com/Treehopper/maven-execution-filter-extension/releases) yet, so build
-it from source and copy it into your Maven installation's `lib/ext` directory (`mvn -v` prints
-that location as "Maven home"; create the `lib/ext` directory if it doesn't already exist):
+Grab the jar from the `.7z` archive attached to any
+[release](https://github.com/Treehopper/maven-execution-filter-extension/releases) and copy it
+into your Maven installation's `lib/ext` directory (`mvn -v` prints that location as "Maven home";
+create the `lib/ext` directory if it doesn't already exist) - or build it from source yourself the
+same way the release workflow does:
 ```
 git clone https://github.com/Treehopper/maven-execution-filter-extension.git
 cd maven-execution-filter-extension
