@@ -44,8 +44,39 @@ The first time the extension runs in a project, it writes this default list to `
 (see [Customizing the filtered plugins](#customizing-the-filtered-plugins)) - edit that file to
 change it from then on.
 
-# Example Usage
-In your `${baseDir}/.mvn/extensions.xml` (requires Maven 3.3.1):
+# Installation
+
+## Default: drop the jar in `${maven.home}/lib/ext`
+Maven loads every jar under `${maven.home}/lib/ext` into its own core classloader at startup - the
+same classpath a `.mvn/extensions.xml`-declared core extension ends up on, just installed once per
+Maven installation via a plain file copy rather than per project via Maven's own dependency
+resolution. That sidesteps the JitPack-resolution problem the per-project option below has (see
+there for details) - you only need the jar file itself, once, and every build run with that Maven
+installation picks it up from then on, with nothing to add to the project itself.
+
+There's no pre-built jar attached to a
+[release](https://github.com/Treehopper/maven-execution-filter-extension/releases) yet, so build
+it from source and copy it into your Maven installation's `lib/ext` directory (`mvn -v` prints
+that location as "Maven home"; create the `lib/ext` directory if it doesn't already exist):
+```
+git clone https://github.com/Treehopper/maven-execution-filter-extension.git
+cd maven-execution-filter-extension
+mvn -Dlicense.skipDownloadLicenses=true -DskipTests package
+cp target/maven-execution-filter-extension-*.jar /path/to/your/maven/lib/ext/
+```
+Its own runtime dependencies (`maven-core`, `maven-plugin-api`) are all `provided` scope - already
+on that classpath as part of Maven itself - so the plain jar from `package` is all you need, no
+shading required.
+
+Since this is tied to the machine's Maven installation rather than the project, it's not something
+you'd commit to the repository - every developer (and CI runner, see
+[Disabling the extension](#disabling-the-extension-eg-for-ci) below) needs the jar in their own
+`lib/ext`, unlike the per-project option below.
+
+## Option: `.mvn/extensions.xml` (per project)
+Declares the extension per project instead, resolved automatically like any other Maven artifact,
+and (unlike `lib/ext`) committed to the repository so every developer gets it without a manual
+install step - requires Maven 3.3.1+:
 ```xml
 <extensions xmlns="https://maven.apache.org/EXTENSIONS/1.0.0" xmlns:xsi="https://www.w3.org/2001/XMLSchema-instance"
             xsi:schemaLocation="https://maven.apache.org/EXTENSIONS/1.0.0 https://maven.apache.org/xsd/core-extensions-1.0.0.xsd">
@@ -66,8 +97,9 @@ and `mvn install` this extension from source into your own local repository, whi
 JitPack entirely - see [`example-project`](example-project) for a runnable demonstration of exactly
 that.
 
-Once resolved, that's it - the [default plugin list](#default-behaviour) above is now filtered out
-of every local build.
+## After installing
+Either way, that's it - the [default plugin list](#default-behaviour) above is now filtered out of
+every local build.
 
 ## Customizing the filtered plugins
 The persisted, user-editable way: `.mvn/filterPlugins.properties`, a standard `.properties` file
@@ -212,29 +244,7 @@ lifecycle participant hook that fires exactly once per build (with a fresh `Mave
 time, even when the daemon reuses the same component instance), rather than by a flag on the model
 reader itself, so it reliably prints again on the next build rather than only the first one the
 daemon ever served. (Resolving the extension itself from JitPack under `mvnd` is a separate matter;
-see the note on core extension resolution above.)
-
-## Compatibility with other core extensions (e.g. maven-git-versioning-extension)
-Plugin filtering happens in a Maven lifecycle participant hook (`afterProjectsRead`), not by taking
-over POM reading from disk. Maven invokes every registered lifecycle participant from every
-installed core extension, so this extension coexists with any number of others - including
-[maven-git-versioning-extension](https://github.com/qoomon/maven-git-versioning-extension), which
-rewrites `${project.version}` based on the current git branch/tag - regardless of declaration order
-in `.mvn/extensions.xml`, and with no configuration needed on either side. Verified by hand with
-maven-git-versioning-extension 7.3.0 and 9.12.x, on Maven 3.8.3 and 3.9.16, in both declaration
-orders, and under `mvnd` daemon reuse.
-
-An earlier version of this extension worked by overriding `ModelProcessor` instead, the mechanism
-`maven-git-versioning-extension` (and any extension that rewrites POMs as Maven reads them) also
-uses. Maven only lets *one* `ModelProcessor` implementation win that single, unqualified lookup, so
-two such extensions installed together were in direct, order-dependent competition for that one
-slot - a real limitation of that older approach, not of the lifecycle-participant approach used now.
-If you're using a version of this extension old enough to still take that approach, upgrade instead
-of working around it here.
-
-Separately, on Maven 3.8.x and earlier: see the note on the Java 11 bytecode target below - an
-extension build compiled for Java 15+ is invisible to Maven's own core-extension discovery on those
-Maven versions, regardless of which mechanism it uses or which other extension it is combined with.
+see the `.mvn/extensions.xml` option under [Installation](#installation) above.)
 
 # Development
 Building this project requires JDK 17+, but the compiled classes target Java 11 (see
