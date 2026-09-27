@@ -153,17 +153,20 @@ public class ExtensionIT {
   @SystemProperty(value = FILTER_INFO_SYS_PROP, content = "true")
   void filter_info(MavenExecutionResult result) {
     // -DfilterInfo is a dry run: it cancels the build right after printing, so this is expected
-    // to fail rather than succeed - see FilterInfoLifecycleParticipant#afterProjectsRead.
+    // to fail rather than succeed - see FilteringLifecycleParticipant#afterProjectsRead.
     assertThat(result).isFailure();
     // Each list prints as its own header line followed by one plugin per indented line below,
-    // rather than a single comma-separated line.
+    // rather than a single comma-separated line. "could still be filtered" now also lists this
+    // jar-packaging fixture's default lifecycle plugins (e.g. maven-surefire-plugin), since
+    // afterProjectsRead sees them already bound - unlike the old ModelProcessor-based approach.
     assertThat(result)
         .out()
         .info()
         .contains("maven-execution-filter-extension (-DfilterInfo):")
         .contains("  filtered from this build:")
         .contains("    org.apache.maven.plugins:maven-checkstyle-plugin")
-        .contains("  could still be filtered  : none")
+        .contains("  could still be filtered:")
+        .contains("    org.apache.maven.plugins:maven-surefire-plugin")
         .contains("  configured to be filtered:")
         .contains("    maven-checkstyle-plugin:org.apache.maven.plugins")
         .contains(
@@ -173,21 +176,23 @@ public class ExtensionIT {
 
   /**
    * maven-surefire-plugin is bound purely via Maven's default lifecycle mapping for jar packaging
-   * in this fixture (no explicit &lt;plugin&gt; declaration at all), so it never appears in the raw
-   * model this extension's ModelProcessor reads - filterPlugins listing it has no effect. See the
-   * "What can and can't be filtered" section of the README.
+   * in this fixture (no explicit &lt;plugin&gt; declaration at all) - filtering happens in {@link
+   * FilteringLifecycleParticipant#afterProjectsRead}, which runs after Maven has already injected
+   * default lifecycle plugin bindings into the project's effective model, so filterPlugins can
+   * remove this one too, unlike the old ModelProcessor-based approach. See the "What can and
+   * can't be filtered" section of the README.
    */
   @MavenTest
   @MavenOption(NO_TRANSFER_PROGRESS)
   @SystemProperty(
       value = FILTER_PLUGINS_SYS_PROP,
       content = "maven-surefire-plugin:org.apache.maven.plugins")
-  void default_lifecycle_plugin_not_filterable(MavenExecutionResult result) {
+  void default_lifecycle_plugin_now_filterable(MavenExecutionResult result) {
     assertThat(result).isSuccessful();
     assertThat(result)
         .out()
         .info()
-        .anyMatch(line -> line.matches("--- surefire:.*:test \\(default-test\\) @ bar ---"));
+        .noneMatch(line -> line.matches("--- surefire:.*:test \\(default-test\\) @ bar ---"));
   }
 
   /**
@@ -235,59 +240,51 @@ public class ExtensionIT {
   }
 
   /**
-   * Regression test for a real conflict between two core extensions that both need to become "the"
-   * {@code ModelProcessor} Maven calls to read POMs - see {@link FilteringModelProcessor}'s class
-   * javadoc. Combines this extension with <a
-   * href="https://github.com/qoomon/maven-git-versioning-extension">maven-git-versioning-extension</a>,
-   * which rewrites the project version from the current git branch (set up as a fixed "it-test"
-   * branch by {@link #initGitRepositoryIfFixtureNeedsOne}), pinned to 7.3.0 - confirmed, by hand,
-   * to have no delegation logic of its own, making this the scenario where this extension's own
-   * delegation (rather than the other extension's) is what makes coexistence possible at all. See
-   * the "Compatibility with other core extensions" section of the README for the newer
-   * maven-git-versioning-extension versions this does not cover.
+   * Regression test for what used to be a real conflict: this extension and <a
+   * href="https://github.com/qoomon/maven-git-versioning-extension">maven-git-versioning-extension</a>
+   * (which rewrites the project version from the current git branch, set up as a fixed "it-test"
+   * branch by {@link #initGitRepositoryIfFixtureNeedsOne}) both used to need to become "the" {@code
+   * ModelProcessor} Maven calls to read POMs - a single, unqualified lookup only one of them could
+   * win. Filtering now happens in {@link FilteringLifecycleParticipant#afterProjectsRead} instead, a
+   * hook Maven calls for every registered core extension rather than a single-winner slot, so both
+   * extensions' logic runs regardless of which one is declared first - see the "Compatibility with
+   * other core extensions" section of the README.
    */
   @MavenTest
   @MavenOption(NO_TRANSFER_PROGRESS)
-  @SystemProperty(value = FILTER_INFO_SYS_PROP, content = "true")
   // maven-git-versioning-extension prefers GitHub Actions' own GITHUB_REF environment variable
   // over the fixture's local .git branch when running there, which would report the CI
   // checkout's actual branch (e.g. main) instead of "it-test" - git.branch is that extension's
   // own highest-priority override, taking precedence over its GITHUB_REF detection.
   @SystemProperty(value = "git.branch", content = "it-test")
   void coexists_with_other_core_extension(MavenExecutionResult result) {
-    // -DfilterInfo cancels the build right after printing (see
-    // FilterInfoLifecycleParticipant#afterProjectsRead) - both the version rewrite and the
-    // filtering it's meant to prove already happened during model reading, well before that
-    // point, so this is expected to fail rather than succeed.
-    assertThat(result).isFailure();
+    assertThat(result).isSuccessful();
     assertThat(result).out().info().anyMatch(line -> line.contains("it-test-SNAPSHOT"));
     assertThat(result)
         .out()
         .info()
-        .contains("Plugin [org.apache.maven.plugins:maven-checkstyle-plugin:3.1.2] filtered")
-        .contains("maven-execution-filter-extension (-DfilterInfo):");
+        .contains("Plugin [org.apache.maven.plugins:maven-checkstyle-plugin:3.1.2] filtered");
   }
 
   /**
    * The flip side of {@link #coexists_with_other_core_extension}: same two extensions, same
    * maven-git-versioning-extension version, but declared in the opposite order in {@code
-   * .mvn/extensions.xml}. That reverses which one wins Maven's single {@code ModelProcessor} lookup
-   * - maven-git-versioning-extension 7.3.0 wins here instead - and since that version has no
-   * delegation logic of its own (confirmed by hand: it always calls {@code super.read(...)}
-   * directly), it never calls into this extension at all. The version still gets rewritten
-   * correctly, proving the other extension is genuinely running, but plugin filtering silently does
-   * not happen: checkstyle actually executes against this fixture's deliberately-missing config
-   * file (same trick as {@link #disabled}) and the build fails. Demonstrates the actual limit of
-   * this extension's delegation fix - it only helps when this extension wins that lookup - see the
-   * "Compatibility with other core extensions" section of the README.
+   * .mvn/extensions.xml}. With the old {@code ModelProcessor}-based approach, this reversed which
+   * extension won the lookup and broke filtering entirely for this exact fixture (hence its
+   * original name); with lifecycle-participant-based filtering there is no lookup to win, so this
+   * now succeeds identically regardless of declaration order.
    */
   @MavenTest
   @MavenOption(NO_TRANSFER_PROGRESS)
   // see coexists_with_other_core_extension's comment on this same property.
   @SystemProperty(value = "git.branch", content = "it-test")
-  void loses_to_other_core_extension_without_delegation_support(MavenExecutionResult result) {
-    assertThat(result).isFailure();
+  void coexists_with_other_core_extension_regardless_of_declaration_order(
+      MavenExecutionResult result) {
+    assertThat(result).isSuccessful();
     assertThat(result).out().info().anyMatch(line -> line.contains("it-test-SNAPSHOT"));
-    assertThat(result).out().info().contains("--- checkstyle:3.1.2:check (default) @ bar ---");
+    assertThat(result)
+        .out()
+        .info()
+        .contains("Plugin [org.apache.maven.plugins:maven-checkstyle-plugin:3.1.2] filtered");
   }
 }
