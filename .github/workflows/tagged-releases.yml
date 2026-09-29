@@ -29,7 +29,14 @@ jobs:
     - name: Package the jar into a 7z archive
       # .mvn/maven.config's revision is always bumped to match the tag before tagging, so the
       # tag name (GITHUB_REF_NAME here) is also the exact version the jar was just built with.
-      run: 7z a "maven-execution-filter-extension-${GITHUB_REF_NAME}.7z" "target/maven-execution-filter-extension-${GITHUB_REF_NAME}.jar"
+      #
+      # 7z stores whatever path it's given, so this cds into target/ first - otherwise the jar
+      # would sit inside a "target/" folder in the archive, which only means something in this
+      # build's own layout and isn't useful to someone who just wants to drop the jar into
+      # lib/ext.
+      run: |
+        cd target
+        7z a "../maven-execution-filter-extension-${GITHUB_REF_NAME}.7z" "maven-execution-filter-extension-${GITHUB_REF_NAME}.jar"
     - uses: ncipollo/release-action@v1
       with:
         prerelease: false
