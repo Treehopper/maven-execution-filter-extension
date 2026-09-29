@@ -148,6 +148,32 @@ public class FilteringLifecycleParticipantTest {
     assertThat(module.getBuild().getPlugins()).isEmpty();
   }
 
+  /**
+   * Filtering matches on artifactId/groupId only, never on version (see {@link
+   * FilteringLifecycleParticipant#isFilteredPlugin}), so the same plugin inherited by several
+   * modules of a reactor - each possibly pinned to its own version - is genuinely one filtered
+   * plugin, not several: it must be logged exactly once, and without a version that wouldn't mean
+   * anything for the whole reactor anyway.
+   */
+  @Test
+  public void logsEachFilteredPluginExactlyOnceAcrossTheWholeReactorAndWithoutVersion()
+      throws MavenExecutionException {
+    var logger = new CapturingLogger();
+    var participant =
+        new FilteringLifecycleParticipant(
+            logger, propertiesProviderFor(false, "maven-checkstyle-plugin:org.apache.maven.plugins"));
+    var checkstyleInModuleOne = plugin("org.apache.maven.plugins", "maven-checkstyle-plugin");
+    checkstyleInModuleOne.setVersion("3.1.2");
+    var checkstyleInModuleTwo = plugin("org.apache.maven.plugins", "maven-checkstyle-plugin");
+    checkstyleInModuleTwo.setVersion("3.0.0");
+
+    participant.afterProjectsRead(
+        sessionWith(projectWith(checkstyleInModuleOne), projectWith(checkstyleInModuleTwo)));
+
+    assertThat(logger.infoMessages)
+        .containsOnlyOnce("Plugin [org.apache.maven.plugins:maven-checkstyle-plugin] filtered");
+  }
+
   @Test
   public void doesNotCancelTheBuildWhenFilterInfoIsNotRequested() throws MavenExecutionException {
     var participant =

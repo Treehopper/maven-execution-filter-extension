@@ -89,10 +89,23 @@ public class FilteringLifecycleParticipant extends AbstractMavenLifecyclePartici
         filterBuild(project.getBuild(), filteredPlugins, removedPlugins, remainingPlugins);
       }
     }
+    logFilteredPlugins(removedPlugins);
 
     if (propertiesProvider.isFilterInfoRequested()) {
       printSummaryAndCancel(configuredDescriptors, removedPlugins, remainingPlugins);
     }
+  }
+
+  /**
+   * Logged once per distinct plugin across the whole reactor, not once per module - the same
+   * inherited plugin would otherwise be logged again for every module that inherits it, and since
+   * filtering matches on artifactId/groupId only, never on version (see {@link #matches}), the
+   * version is left out here too, same as in the {@value PropertiesProvider#FILTER_INFO_SYS_PROP}
+   * summary (see {@link #describe}).
+   */
+  private void logFilteredPlugins(List<Plugin> removedPlugins) {
+    describe(removedPlugins)
+        .forEach(descriptor -> logger.info(String.format("Plugin [%s] filtered", descriptor)));
   }
 
   private List<Plugin> parseFilteredPlugins(List<String> descriptors) {
@@ -131,19 +144,7 @@ public class FilteringLifecycleParticipant extends AbstractMavenLifecyclePartici
   }
 
   boolean isFilteredPlugin(Plugin plugin, List<Plugin> filteredPlugins) {
-    var ofilteredPlugin =
-        filteredPlugins.stream()
-            .filter(filteredPlugin -> matches(plugin, filteredPlugin))
-            .findFirst();
-
-    if (ofilteredPlugin.isPresent()) {
-      logger.info(
-          String.format(
-              "Plugin [%s:%s:%s] filtered",
-              plugin.getGroupId(), plugin.getArtifactId(), plugin.getVersion()));
-    }
-
-    return ofilteredPlugin.isPresent();
+    return filteredPlugins.stream().anyMatch(filteredPlugin -> matches(plugin, filteredPlugin));
   }
 
   /**

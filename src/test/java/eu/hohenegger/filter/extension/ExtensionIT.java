@@ -88,7 +88,7 @@ public class ExtensionIT {
     assertThat(result)
         .out()
         .info()
-        .contains("Plugin [org.apache.maven.plugins:maven-checkstyle-plugin:3.1.2] filtered");
+        .contains("Plugin [org.apache.maven.plugins:maven-checkstyle-plugin] filtered");
   }
 
   @MavenTest
@@ -108,7 +108,7 @@ public class ExtensionIT {
     assertThat(result)
         .out()
         .info()
-        .contains("Plugin [org.apache.maven.plugins:maven-checkstyle-plugin:3.1.2] filtered");
+        .contains("Plugin [org.apache.maven.plugins:maven-checkstyle-plugin] filtered");
   }
 
   @MavenTest
@@ -121,7 +121,7 @@ public class ExtensionIT {
     assertThat(result)
         .out()
         .info()
-        .contains("Plugin [org.apache.maven.plugins:maven-checkstyle-plugin:3.1.2] filtered");
+        .contains("Plugin [org.apache.maven.plugins:maven-checkstyle-plugin] filtered");
   }
 
   @MavenTest
@@ -131,8 +131,8 @@ public class ExtensionIT {
     assertThat(result)
         .out()
         .info()
-        .contains("Plugin [org.apache.maven.plugins:maven-checkstyle-plugin:3.1.2] filtered")
-        .contains("Plugin [org.apache.maven.plugins:maven-pmd-plugin:3.21.2] filtered");
+        .contains("Plugin [org.apache.maven.plugins:maven-checkstyle-plugin] filtered")
+        .contains("Plugin [org.apache.maven.plugins:maven-pmd-plugin] filtered");
   }
 
   @MavenTest
@@ -142,7 +142,7 @@ public class ExtensionIT {
     assertThat(result)
         .out()
         .info()
-        .contains("Plugin [org.apache.maven.plugins:maven-checkstyle-plugin:3.1.2] filtered");
+        .contains("Plugin [org.apache.maven.plugins:maven-checkstyle-plugin] filtered");
   }
 
   @MavenTest
@@ -208,7 +208,7 @@ public class ExtensionIT {
     assertThat(result)
         .out()
         .info()
-        .contains("Plugin [org.apache.maven.plugins:maven-checkstyle-plugin:3.1.2] filtered");
+        .contains("Plugin [org.apache.maven.plugins:maven-checkstyle-plugin] filtered");
   }
 
   /**
@@ -236,7 +236,7 @@ public class ExtensionIT {
     assertThat(result)
         .out()
         .info()
-        .contains("Plugin [org.openapitools:openapi-generator-maven-plugin:7.25.0] filtered");
+        .contains("Plugin [org.openapitools:openapi-generator-maven-plugin] filtered");
   }
 
   /**
@@ -263,7 +263,7 @@ public class ExtensionIT {
     assertThat(result)
         .out()
         .info()
-        .contains("Plugin [org.apache.maven.plugins:maven-checkstyle-plugin:3.1.2] filtered");
+        .contains("Plugin [org.apache.maven.plugins:maven-checkstyle-plugin] filtered");
   }
 
   /**
@@ -285,6 +285,6 @@ public class ExtensionIT {
     assertThat(result)
         .out()
         .info()
-        .contains("Plugin [org.apache.maven.plugins:maven-checkstyle-plugin:3.1.2] filtered");
+        .contains("Plugin [org.apache.maven.plugins:maven-checkstyle-plugin] filtered");
   }
 }
