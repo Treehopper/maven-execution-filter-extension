@@ -85,7 +85,7 @@ install step - requires Maven 3.3.1+:
     <extension>
         <groupId>com.github.Treehopper</groupId>
         <artifactId>maven-execution-filter-extension</artifactId>
-        <version>2.0.0-alpha</version>
+        <version>2.1.0-alpha</version>
     </extension>
 </extensions>
 ```
