@@ -231,6 +231,20 @@
             <maven.version>${maven.version}</maven.version>
             <maven.home>${maven.home}</maven.home>
           </systemPropertyVariables>
+          <!--
+           ! itf-jupiter-extension forks a real, separate `mvn` process per @MavenTest. Since the
+           ! extension now falls back to ~/.mvn/filterPlugins.properties when a fixture has no
+           ! project-level one, an un-isolated home directory would make every IT run read from
+           ! (and write to) whoever's real home directory happens to run the build, rather than a
+           ! fixture's own project directory. Overriding the HOME environment variable alone is
+           ! not reliable here - on some JVM/OS combinations (macOS in particular) `user.home` is
+           ! not actually derived from HOME at JVM startup - so this forces it explicitly via
+           ! MAVEN_OPTS, which the `mvn` launcher script passes straight through as a JVM flag
+           ! (guaranteed to win) to each forked `mvn` process.
+          -->
+          <environmentVariables>
+            <MAVEN_OPTS>-Duser.home=${project.build.directory}/it-home</MAVEN_OPTS>
+          </environmentVariables>
         </configuration>
         <executions>
           <execution>

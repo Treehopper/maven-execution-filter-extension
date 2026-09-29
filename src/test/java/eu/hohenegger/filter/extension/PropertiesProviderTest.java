@@ -7,9 +7,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -37,24 +37,37 @@ public class PropertiesProviderTest {
 
   private static final String MULTI_MODULE_PROJECT_DIRECTORY_SYS_PROP =
       "maven.multiModuleProjectDirectory";
+  private static final String USER_HOME_SYS_PROP = "user.home";
 
   @TempDir private Path projectDirectory;
+  @TempDir private Path homeDirectory;
 
   private String originalMultiModuleProjectDirectory;
+  private String originalUserHome;
   private CapturingLogger logger;
   private PropertiesProvider propertiesProvider;
+
+  /**
+   * Where the config file is created/read by default now: a project-level {@code .mvn/} is no
+   * longer guaranteed to exist (the extension is typically installed once per machine via {@code
+   * lib/ext} rather than declared per project), so {@code ~/.mvn/filterPlugins.properties} is the
+   * default - a project-level file only takes priority if one already exists, see {@link
+   * #projectLevelConfigFileOverridesTheHomeDirectoryOne}.
+   */
   private Path configFile;
 
+  private Path projectConfigFile;
+
   @BeforeEach
-  public void setUp() throws IOException {
+  public void setUp() {
     originalMultiModuleProjectDirectory =
         System.getProperty(MULTI_MODULE_PROJECT_DIRECTORY_SYS_PROP);
+    originalUserHome = System.getProperty(USER_HOME_SYS_PROP);
     System.setProperty(MULTI_MODULE_PROJECT_DIRECTORY_SYS_PROP, projectDirectory.toString());
+    System.setProperty(USER_HOME_SYS_PROP, homeDirectory.toString());
 
-    // .mvn/ always already exists in a real project by the time this extension runs, since
-    // extensions.xml lives there too.
-    Files.createDirectories(projectDirectory.resolve(".mvn"));
-    configFile = projectDirectory.resolve(".mvn").resolve(CONFIG_FILE_NAME);
+    configFile = homeDirectory.resolve(".mvn").resolve(CONFIG_FILE_NAME);
+    projectConfigFile = projectDirectory.resolve(".mvn").resolve(CONFIG_FILE_NAME);
 
     logger = new CapturingLogger();
     propertiesProvider = new PropertiesProvider(logger);
@@ -71,6 +84,11 @@ public class PropertiesProviderTest {
       System.setProperty(
           MULTI_MODULE_PROJECT_DIRECTORY_SYS_PROP, originalMultiModuleProjectDirectory);
     }
+    if (originalUserHome == null) {
+      System.getProperties().remove(USER_HOME_SYS_PROP);
+    } else {
+      System.setProperty(USER_HOME_SYS_PROP, originalUserHome);
+    }
   }
 
   @Test
@@ -86,6 +104,7 @@ public class PropertiesProviderTest {
 
   @Test
   public void reusesAnAlreadyExistingConfigFile() throws IOException {
+    Files.createDirectories(configFile.getParent());
     Files.writeString(
         configFile, "filterPlugins=maven-checkstyle-plugin:org.apache.maven.plugins\n");
 
@@ -93,8 +112,27 @@ public class PropertiesProviderTest {
         .containsExactly("maven-checkstyle-plugin:org.apache.maven.plugins");
   }
 
+  /**
+   * A project can still commit its own {@code .mvn/filterPlugins.properties} to share a filter
+   * list with the whole team, same as before the extension started defaulting to a single
+   * per-user {@code ~/.mvn/filterPlugins.properties} - it just has to already exist, since a
+   * project with no config file of its own falls back to (and creates) the per-user one instead
+   * of silently creating a new project-level file nobody asked for.
+   */
+  @Test
+  public void projectLevelConfigFileOverridesTheHomeDirectoryOne() throws IOException {
+    Files.createDirectories(projectConfigFile.getParent());
+    Files.writeString(
+        projectConfigFile, "filterPlugins=maven-pmd-plugin:org.apache.maven.plugins\n");
+
+    assertThat(propertiesProvider.getPluginDescriptors())
+        .containsExactly("maven-pmd-plugin:org.apache.maven.plugins");
+    assertThat(configFile).doesNotExist();
+  }
+
   @Test
   public void supportsCommentsAndLineContinuationInConfigFile() throws IOException {
+    Files.createDirectories(configFile.getParent());
     Files.writeString(
         configFile,
         "# a hand-edited comment above the property, like the generated header\n"
@@ -109,6 +147,7 @@ public class PropertiesProviderTest {
 
   @Test
   public void missingKeyInConfigFileDisablesFiltering() throws IOException {
+    Files.createDirectories(configFile.getParent());
     Files.writeString(configFile, "# nothing configured here\n");
 
     assertThat(propertiesProvider.getPluginDescriptors()).isEmpty();
@@ -116,6 +155,7 @@ public class PropertiesProviderTest {
 
   @Test
   public void blankValueInConfigFileDisablesFiltering() throws IOException {
+    Files.createDirectories(configFile.getParent());
     Files.writeString(configFile, "filterPlugins=\n");
 
     assertThat(propertiesProvider.getPluginDescriptors()).isEmpty();
@@ -235,6 +275,7 @@ public class PropertiesProviderTest {
    */
   @Test
   public void editingTheGeneratorsListInTheConfigFileIsHonored() throws IOException {
+    Files.createDirectories(configFile.getParent());
     Files.writeString(
         configFile,
         "filterPlugins=\n" + FILTER_GENERATORS_SYS_PROP + "=my-custom-generator-plugin\n");

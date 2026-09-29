@@ -118,11 +118,15 @@ public class PropertiesProvider {
    * value (e.g. {@code -DfilterPlugins=}) disables filtering entirely for this build, which is
    * useful to restore the original, unfiltered build on a CI server without touching the file.
    *
-   * <p>Otherwise, the persisted {@value #CONFIG_FILE_NAME} file inside {@code .mvn/} is used. The
-   * first time this runs in a project (i.e. that file doesn't exist yet), it is created with {@link
-   * #DEFAULT_FILTERED_PLUGIN_DESCRIPTORS}, which are also returned for that build; from then on,
-   * it's a plain {@code .properties} file meant to be edited directly - commit it so the whole team
-   * shares the same local dev experience.
+   * <p>Otherwise, the persisted {@value #CONFIG_FILE_NAME} file is used - a project-level {@code
+   * .mvn/filterPlugins.properties} if the project has one, falling back to (and, the first time
+   * this runs on a machine, creating) {@code ~/.mvn/filterPlugins.properties} otherwise. See {@link
+   * #configFilePath()} for why: the extension is now typically installed once per machine rather
+   * than declared per project, so a single per-user file is the better default, though a project can
+   * still commit its own to override that with a shared, team-wide list. Either way it's a plain
+   * {@code .properties} file meant to be edited directly, created with {@link
+   * #DEFAULT_FILTERED_PLUGIN_DESCRIPTORS} the first time it doesn't exist yet, which are also
+   * returned for that build.
    *
    * <p>Either way, if {@value #FILTER_GENERATORS_SYS_PROP} is also set, whatever is configured
    * under that same key in the config file is appended on top - independently of whichever of the
@@ -186,20 +190,34 @@ public class PropertiesProvider {
   }
 
   /**
-   * {@code .mvn/} always already exists by the time this runs - it's where {@code extensions.xml}
-   * itself lives - so only the file needs creating, not the directory. {@code
-   * maven.multiModuleProjectDirectory} is the system property Maven itself sets to the directory
-   * containing {@code .mvn/}, which is the reliable way to find it regardless of which submodule's
-   * pom.xml happens to be getting read.
+   * A project-level {@code .mvn/filterPlugins.properties} - if a project already has one, e.g. from
+   * before the extension moved to being installed via {@code lib/ext} by default, or because a team
+   * deliberately wants a shared, project-specific, committed override - takes priority; otherwise
+   * this falls back to (and, on first run, creates) a single {@code ~/.mvn/filterPlugins.properties}
+   * for the whole user, matching how the extension itself is typically installed once per machine
+   * now rather than declared per project. Unlike the project-level file, the home-directory one is
+   * deliberately not something to commit or share - it's this one developer's personal local-dev
+   * preference, applied to every project they build. {@code maven.multiModuleProjectDirectory} is
+   * the system property Maven itself sets to the directory a project-level {@code .mvn/} would live
+   * in, which is the reliable way to find it regardless of which submodule's pom.xml happens to be
+   * getting read.
    */
   private static Path configFilePath() {
     var projectDirectory =
         System.getProperty("maven.multiModuleProjectDirectory", System.getProperty("user.dir"));
-    return Path.of(projectDirectory, ".mvn", CONFIG_FILE_NAME);
+    var projectConfigFile = Path.of(projectDirectory, ".mvn", CONFIG_FILE_NAME);
+    if (Files.exists(projectConfigFile)) {
+      return projectConfigFile;
+    }
+    return Path.of(System.getProperty("user.home"), ".mvn", CONFIG_FILE_NAME);
   }
 
   private void writeDefaultConfigFile(Path configFile) throws IOException {
     try {
+      // Neither a project's .mvn/ (no longer guaranteed to exist now that the extension is
+      // typically installed via lib/ext instead of declared per project) nor ~/.mvn/ can be
+      // assumed to already be there.
+      Files.createDirectories(configFile.getParent());
       Files.writeString(
           configFile,
           defaultConfigFileContent(),
@@ -232,9 +250,10 @@ public class PropertiesProvider {
                 "# below for readability - keep the trailing '\\' on every line except the last."
                     + " Add or",
                 "# remove a line to change what's filtered locally; clear the value entirely",
-                "# (filterPlugins=) to disable filtering. Commit this file so your team shares the"
-                    + " same",
-                "# local dev experience.",
+                "# (filterPlugins=) to disable filtering. If this file is under a project's .mvn/,",
+                "# commit it so your team shares the same local dev experience; if it's",
+                "# ~/.mvn/filterPlugins.properties instead, it's yours alone, applied to every",
+                "# project you build.",
                 "#",
                 "# To override this file for a single build without editing it:",
                 "#   -DfilterPlugins=artifactId[:groupId[:version]][,...]",

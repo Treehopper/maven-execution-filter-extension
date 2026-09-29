@@ -40,7 +40,7 @@ build is mostly wasted time. `maven-source-plugin`, `maven-javadoc-plugin` and
 `jib-maven-plugin` only matters when actually building/pushing a container image, so there is no
 reason to do any of that on every local build either.
 
-The first time the extension runs in a project, it writes this default list to `.mvn/filterPlugins.properties`
+The first time the extension runs, it writes this default list to `~/.mvn/filterPlugins.properties`
 (see [Customizing the filtered plugins](#customizing-the-filtered-plugins)) - edit that file to
 change it from then on.
 
@@ -103,20 +103,30 @@ Either way, that's it - the [default plugin list](#default-behaviour) above is n
 every local build.
 
 ## Customizing the filtered plugins
-The persisted, user-editable way: `.mvn/filterPlugins.properties`, a standard `.properties` file
-with a `filterPlugins` key - same name and comma-separated syntax as the system property below,
-just persisted - plus a separate `filterGenerators` key for code generator plugins (see
-[Filtering code generator plugins](#filtering-code-generator-plugins)). The first time the
-extension runs in a project (i.e. that file doesn't exist yet), it's created with the
-[default list](#default-behaviour) above:
+The persisted, user-editable way: `filterPlugins.properties`, a standard `.properties` file with a
+`filterPlugins` key - same name and comma-separated syntax as the system property below, just
+persisted - plus a separate `filterGenerators` key for code generator plugins (see
+[Filtering code generator plugins](#filtering-code-generator-plugins)).
+
+By default this lives at `~/.mvn/filterPlugins.properties` - one file per developer machine,
+matching how the extension itself is typically installed once per machine now (see
+[Installation](#installation)) rather than declared per project, and applying to every project
+that developer builds. If a project has its own `.mvn/filterPlugins.properties` already, that one
+takes priority instead - useful for a team that wants to commit a shared, project-specific list,
+the way this worked before the extension defaulted to a per-user file; a project with no config
+file of its own does *not* get one created for it automatically, only the per-user one does.
+
+Either way, the first time it's used (i.e. that particular file doesn't exist yet), it's created
+with the [default list](#default-behaviour) above:
 ```properties
 # Plugins filtered from local builds by maven-execution-filter-extension.
 #
 # Comma-separated artifactId[:groupId[:version]] descriptors, one per continuation line
 # below for readability - keep the trailing '\' on every line except the last. Add or
 # remove a line to change what's filtered locally; clear the value entirely
-# (filterPlugins=) to disable filtering. Commit this file so your team shares the same
-# local dev experience.
+# (filterPlugins=) to disable filtering. If this file is under a project's .mvn/, commit it
+# so your team shares the same local dev experience; if it's ~/.mvn/filterPlugins.properties
+# instead, it's yours alone, applied to every project you build.
 #
 # To override this file for a single build without editing it:
 #   -DfilterPlugins=artifactId[:groupId[:version]][,...]
@@ -127,10 +137,10 @@ filterPlugins=maven-checkstyle-plugin:org.apache.maven.plugins,\
   ...
 ```
 From then on, it's yours: add or remove lines (keeping the trailing `\` continuation on every line
-but the last) to change what's filtered on the next build, no flags needed. Commit it like you
-would `.mvn/extensions.xml` or `.mvn/jvm.config`, so the whole team gets the same local dev
-experience rather than everyone tuning their own copy. Clearing the value entirely
-(`filterPlugins=`) disables filtering, same as the blank system property value below.
+but the last) to change what's filtered on the next build, no flags needed. If it's a project-level
+file, commit it like you would `.mvn/extensions.xml` or `.mvn/jvm.config`, so the whole team gets
+the same local dev experience rather than everyone tuning their own copy. Clearing the value
+entirely (`filterPlugins=`) disables filtering, same as the blank system property value below.
 
 The one-off, invocation-only way: set the `filterPlugins` system property to a comma-separated list
 of the same descriptor syntax, e.g.:
@@ -171,7 +181,7 @@ This is additive: it filters the configured generator plugin list on top of what
 explicitly disabled (`-DfilterPlugins=`).
 
 The generator plugin list itself is just as customizable as `filterPlugins`, but lives under its
-own `filterGenerators` key in the same `.mvn/filterPlugins.properties` file (see
+own `filterGenerators` key in the same `filterPlugins.properties` file (see
 [Customizing the filtered plugins](#customizing-the-filtered-plugins)), bootstrapped the same way
 with its own built-in default the first time the file is created:
 ```properties
@@ -228,9 +238,12 @@ runs it by mistake doesn't quietly report success without having built anything.
 command without `-DfilterInfo` once you're done reading the summary.
 
 ## Disabling the extension (e.g. for CI)
-Since `.mvn/filterPlugins.properties` (like `.mvn/jvm.config`) is typically committed to the repository,
-it applies to every build, including your CI pipeline. To let CI run with the full, unfiltered set
-of plugins without touching either file, override with a blank value on the command line:
+If a project commits its own `.mvn/filterPlugins.properties` (like `.mvn/jvm.config`), it applies
+to every build, including your CI pipeline. (The default per-user `~/.mvn/filterPlugins.properties`
+is normally moot for CI instead, since a CI runner doesn't already have one - though it would
+otherwise get created fresh with the built-in defaults, same as on a developer's first local build,
+if the extension is installed there too.) To let CI run with the full, unfiltered set of plugins
+without touching either file, override with a blank value on the command line:
 ```
 mvn -DfilterPlugins= verify
 ```
